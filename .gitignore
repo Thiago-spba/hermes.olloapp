@@ -1,5 +1,9 @@
 node_modules/
-dist/
+backend/node_modules/
+frontend/node_modules/
+frontend/dist/
 .firebase/
+frontend/.firebase/
 *.log
 hermes.sqlite
+backend/hermes.sqlite
