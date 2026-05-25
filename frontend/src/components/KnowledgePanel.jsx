@@ -4,6 +4,7 @@ import {
   listKnowledge,
   deleteKnowledge,
   clearKnowledge,
+  saveTextKnowledge,
 } from "../services/api";
 
 const KnowledgePanel = ({ isDark, onClose }) => {
@@ -11,6 +12,10 @@ const KnowledgePanel = ({ isDark, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [tab, setTab] = useState("files");
+  const [textTitle, setTextTitle] = useState("");
+  const [textContent, setTextContent] = useState("");
+  const [savingText, setSavingText] = useState(false);
   const fileInputRef = useRef(null);
 
   const c = {
@@ -22,6 +27,7 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     hover: isDark ? "#143d2e" : "#e0f5ef",
     accent: "#00e5ff",
     danger: "#ff4455",
+    input: isDark ? "#071a14" : "#f0faf7",
   };
 
   useEffect(() => {
@@ -33,7 +39,7 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     try {
       const data = await listKnowledge();
       setFiles(data.files || []);
-    } catch (e) {
+    } catch {
       showMessage("Erro ao carregar arquivos.", "error");
     } finally {
       setLoading(false);
@@ -52,15 +58,33 @@ const KnowledgePanel = ({ isDark, onClose }) => {
       showMessage(
         erros > 0
           ? `${total} enviado(s), ${erros} com erro.`
-          : `${total} arquivo(s) adicionado(s) com sucesso!`,
+          : `${total} arquivo(s) adicionado(s)!`,
         erros > 0 ? "warn" : "ok",
       );
       await fetchFiles();
-    } catch (e) {
+    } catch {
       showMessage("Erro ao enviar arquivos.", "error");
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  };
+
+  const handleSaveText = async () => {
+    if (!textTitle.trim() || !textContent.trim())
+      return showMessage("Preencha o titulo e o texto.", "warn");
+    setSavingText(true);
+    try {
+      await saveTextKnowledge(textTitle.trim(), textContent.trim());
+      showMessage("Texto salvo na base!", "ok");
+      setTextTitle("");
+      setTextContent("");
+      setTab("files");
+      await fetchFiles();
+    } catch {
+      showMessage("Erro ao salvar texto.", "error");
+    } finally {
+      setSavingText(false);
     }
   };
 
@@ -69,7 +93,7 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     try {
       await deleteKnowledge(id);
       setFiles((prev) => prev.filter((f) => f.id !== id));
-      showMessage("Arquivo removido.", "ok");
+      showMessage("Removido.", "ok");
     } catch {
       showMessage("Erro ao remover.", "error");
     }
@@ -80,7 +104,7 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     try {
       await clearKnowledge();
       setFiles([]);
-      showMessage("Base limpa com sucesso.", "ok");
+      showMessage("Base limpa.", "ok");
     } catch {
       showMessage("Erro ao limpar.", "error");
     }
@@ -91,13 +115,12 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     setTimeout(() => setMessage(null), 3500);
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
+  const formatDate = (dateStr) =>
+    new Date(dateStr).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "2-digit",
     });
-  };
 
   return (
     <div
@@ -143,7 +166,7 @@ const KnowledgePanel = ({ isDark, onClose }) => {
                 Base de Conhecimento
               </div>
               <div style={{ fontSize: "11px", color: c.sub }}>
-                {files.length} arquivo(s) — PDF e TXT
+                {files.length} item(s) — PDF, TXT e Texto
               </div>
             </div>
           </div>
@@ -161,7 +184,37 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           </button>
         </div>
 
-        {/* Mensagem de feedback */}
+        {/* Tabs */}
+        <div style={{ display: "flex", borderBottom: `1px solid ${c.border}` }}>
+          {[
+            ["files", "📂 Arquivos"],
+            ["text", "✏️ Digitar texto"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              style={{
+                flex: 1,
+                padding: "12px",
+                background: "transparent",
+                border: "none",
+                borderBottom:
+                  tab === key
+                    ? `2px solid ${c.accent}`
+                    : "2px solid transparent",
+                color: tab === key ? c.accent : c.sub,
+                fontSize: "13px",
+                fontWeight: tab === key ? "700" : "400",
+                cursor: "pointer",
+                transition: "color 0.2s",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Feedback */}
         {message && (
           <div
             style={{
@@ -187,112 +240,182 @@ const KnowledgePanel = ({ isDark, onClose }) => {
                   : message.type === "warn"
                     ? "#ffaa00"
                     : c.danger,
-              border: `1px solid ${
-                message.type === "ok"
-                  ? "#00e5aa"
-                  : message.type === "warn"
-                    ? "#ffaa00"
-                    : c.danger
-              }`,
+              border: `1px solid ${message.type === "ok" ? "#00e5aa" : message.type === "warn" ? "#ffaa00" : c.danger}`,
             }}
           >
             {message.text}
           </div>
         )}
 
-        {/* Lista de arquivos */}
+        {/* Conteudo */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
-          {loading ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "32px",
-                color: c.sub,
-                fontSize: "13px",
-              }}
-            >
-              Carregando...
-            </div>
-          ) : files.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px 20px",
-                color: c.sub,
-                fontSize: "13px",
-              }}
-            >
-              <div style={{ fontSize: "36px", marginBottom: "12px" }}>📂</div>
-              Nenhum arquivo na base ainda.
-              <br />
-              Envie PDFs ou TXTs para o Hermes consultar nas respostas.
-            </div>
-          ) : (
-            files.map((file) => (
+          {tab === "files" ? (
+            loading ? (
               <div
-                key={file.id}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 14px",
-                  marginBottom: "8px",
-                  backgroundColor: c.hover,
-                  borderRadius: "10px",
-                  border: `1px solid ${c.border}`,
+                  textAlign: "center",
+                  padding: "32px",
+                  color: c.sub,
+                  fontSize: "13px",
                 }}
               >
+                Carregando...
+              </div>
+            ) : files.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 20px",
+                  color: c.sub,
+                  fontSize: "13px",
+                }}
+              >
+                <div style={{ fontSize: "36px", marginBottom: "12px" }}>📂</div>
+                Nenhum conteudo na base ainda.
+                <br />
+                Envie arquivos ou digite um texto.
+              </div>
+            ) : (
+              files.map((file) => (
                 <div
+                  key={file.id}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "10px",
-                    flex: 1,
-                    minWidth: 0,
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    marginBottom: "8px",
+                    backgroundColor: c.hover,
+                    borderRadius: "10px",
+                    border: `1px solid ${c.border}`,
                   }}
                 >
-                  <span style={{ fontSize: "20px" }}>
-                    {file.filetype === "pdf" ? "📄" : "📝"}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        color: c.text,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {file.filename}
-                    </div>
-                    <div style={{ fontSize: "11px", color: c.sub }}>
-                      {file.filetype.toUpperCase()} ·{" "}
-                      {formatDate(file.created_at)}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <span style={{ fontSize: "20px" }}>
+                      {file.filetype === "pdf" ? "📄" : "📝"}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          color: c.text,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {file.filename}
+                      </div>
+                      <div style={{ fontSize: "11px", color: c.sub }}>
+                        {file.filetype?.toUpperCase()} ·{" "}
+                        {formatDate(file.created_at)}
+                      </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleDelete(file.id, file.filename)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      color: c.danger,
+                      fontSize: "16px",
+                      padding: "4px 8px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    🗑️
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleDelete(file.id, file.filename)}
+              ))
+            )
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                paddingTop: "8px",
+              }}
+            >
+              <div>
+                <label
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: c.danger,
-                    fontSize: "16px",
-                    padding: "4px 8px",
-                    flexShrink: 0,
+                    fontSize: "12px",
+                    color: c.sub,
+                    display: "block",
+                    marginBottom: "6px",
                   }}
                 >
-                  🗑️
-                </button>
+                  Titulo
+                </label>
+                <input
+                  value={textTitle}
+                  onChange={(e) => setTextTitle(e.target.value)}
+                  placeholder=""
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    backgroundColor: c.input,
+                    border: `1px solid ${c.border}`,
+                    borderRadius: "8px",
+                    color: c.text,
+                    fontSize: "14px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
               </div>
-            ))
+              <div>
+                <label
+                  style={{
+                    fontSize: "12px",
+                    color: c.sub,
+                    display: "block",
+                    marginBottom: "6px",
+                  }}
+                >
+                  Conteudo
+                </label>
+                <textarea
+                  value={textContent}
+                  onChange={(e) => setTextContent(e.target.value)}
+                  placeholder="Cole ou digite o texto que o Hermes deve conhecer..."
+                  rows={8}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    backgroundColor: c.input,
+                    border: `1px solid ${c.border}`,
+                    borderRadius: "8px",
+                    color: c.text,
+                    fontSize: "13px",
+                    lineHeight: "1.6",
+                    outline: "none",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: "11px", color: c.sub }}>
+                {textContent.length} caracteres · ~
+                {Math.ceil(textContent.length / 4)} tokens estimados
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Ações */}
+        {/* Acoes */}
         <div
           style={{
             padding: "16px 20px",
@@ -309,40 +432,62 @@ const KnowledgePanel = ({ isDark, onClose }) => {
             onChange={handleUpload}
             style={{ display: "none" }}
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{
-              flex: 1,
-              padding: "12px",
-              backgroundColor: c.accent,
-              border: "none",
-              borderRadius: "10px",
-              fontSize: "14px",
-              fontWeight: "700",
-              color: "#071a14",
-              cursor: uploading ? "not-allowed" : "pointer",
-              opacity: uploading ? 0.7 : 1,
-            }}
-          >
-            {uploading ? "Enviando..." : "＋ Adicionar arquivos"}
-          </button>
-
-          {files.length > 0 && (
+          {tab === "files" ? (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  backgroundColor: c.accent,
+                  border: "none",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  fontWeight: "700",
+                  color: "#071a14",
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  opacity: uploading ? 0.7 : 1,
+                }}
+              >
+                {uploading ? "Enviando..." : "＋ Adicionar arquivos"}
+              </button>
+              {files.length > 0 && (
+                <button
+                  onClick={handleClear}
+                  style={{
+                    padding: "12px 16px",
+                    backgroundColor: "transparent",
+                    border: `1px solid ${c.danger}`,
+                    borderRadius: "10px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: c.danger,
+                    cursor: "pointer",
+                  }}
+                >
+                  Limpar tudo
+                </button>
+              )}
+            </>
+          ) : (
             <button
-              onClick={handleClear}
+              onClick={handleSaveText}
+              disabled={savingText}
               style={{
-                padding: "12px 16px",
-                backgroundColor: "transparent",
-                border: `1px solid ${c.danger}`,
+                flex: 1,
+                padding: "12px",
+                backgroundColor: c.accent,
+                border: "none",
                 borderRadius: "10px",
-                fontSize: "13px",
-                fontWeight: "600",
-                color: c.danger,
-                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: "#071a14",
+                cursor: savingText ? "not-allowed" : "pointer",
+                opacity: savingText ? 0.7 : 1,
               }}
             >
-              Limpar tudo
+              {savingText ? "Salvando..." : "💾 Salvar na base"}
             </button>
           )}
         </div>

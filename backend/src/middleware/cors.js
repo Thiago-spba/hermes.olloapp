@@ -27,7 +27,7 @@ const corsOptions = {
       callback(new Error(`Origem bloqueada pelo CORS: ${origin}`))
     }
   },
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   maxAge: 86400, // Cache das permissões por 24h no navegador

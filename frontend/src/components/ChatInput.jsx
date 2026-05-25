@@ -226,6 +226,23 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
               value={text}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
+                onPaste={(e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (const item of items) {
+                    if (item.type.startsWith("image/")) {
+                      e.preventDefault();
+                      const file = item.getAsFile();
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setAttachedFile({ name: "imagem_colada.png", type: file.type, size: file.size, icon: "🖼️", data: ev.target.result });
+                        setAttachedAudio(null);
+                      };
+                      reader.readAsDataURL(file);
+                      break;
+                    }
+                  }
+                }}
               placeholder={
                 attachedAudio
                   ? "Adicione contexto ao audio..."

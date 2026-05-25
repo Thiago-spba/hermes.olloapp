@@ -1,4 +1,14 @@
 import { memo, useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+
+const MODELS_LABEL = {
+  "thiago-jr": "⚡ Jr",
+  "thiago-senior": "🧠 Sênior",
+  "thiago-doutor": "🎓 Doutor",
+  "thiago-especialista": "🔬 Especialista",
+  "thiago-supremo": "👑 Supremo",
+  auto: "🤖 Auto",
+};
 
 const ThinkingDots = ({ isDark }) => (
   <div
@@ -112,14 +122,14 @@ const ChatMessage = memo(({ message, isDark }) => {
           <ThinkingDots isDark={isDark} />
         ) : (
           <>
-            <p
+            <div
               style={{
                 ...styles.text,
                 color: isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
               }}
             >
-              {message.content}
-            </p>
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -128,14 +138,33 @@ const ChatMessage = memo(({ message, isDark }) => {
                 marginTop: "4px",
               }}
             >
-              <span
-                style={{
-                  ...styles.time,
-                  color: isDark ? "#3d6b5e" : "#7aada0",
-                }}
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                {message.time}
-              </span>
+                <span
+                  style={{
+                    ...styles.time,
+                    color: isDark ? "#3d6b5e" : "#7aada0",
+                  }}
+                >
+                  {message.time}
+                </span>
+                {message.modelKey && !isUser && !isError && (
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      color: "#00e5aa",
+                      opacity: 0.6,
+                      backgroundColor: isDark ? "#071a14" : "#e0f5ef",
+                      padding: "1px 5px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(0,229,170,0.2)",
+                    }}
+                  >
+                    {MODELS_LABEL[message.modelKey] || message.modelKey}
+                  </span>
+                )}
+              </div>
               {!isUser && !isError && message.content && (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "4px" }}
@@ -224,18 +253,13 @@ const styles = {
   text: {
     fontSize: "var(--font-size-base)",
     lineHeight: "1.6",
-    whiteSpace: "pre-wrap",
     transition: "color 0.3s ease",
   },
   time: {
     display: "block",
     fontSize: "10px",
-    marginTop: "4px",
-    textAlign: "right",
     transition: "color 0.3s ease",
   },
 };
 
 export default ChatMessage;
-
-

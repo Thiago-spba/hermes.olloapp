@@ -40,8 +40,15 @@ const App = () => {
     removeConversation,
   } = useConversation(user?.uid);
 
-  const { messages, isLoading, sendUserMessage, clearChat, loadMessages, selectedModel, changeModel } =
-    useChat();
+  const {
+    messages,
+    isLoading,
+    sendUserMessage,
+    clearChat,
+    loadMessages,
+    selectedModel,
+    changeModel,
+  } = useChat();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -108,7 +115,6 @@ const App = () => {
     setShowHistory(false);
   };
 
-  // Quando seleciona um projeto, envia o contexto para o chat
   const handleSelectProject = (project) => {
     const contextMessage = `Vou te falar sobre meu projeto "${project.name}". ${project.description ? project.description + ". " : ""}${project.context ? "Detalhes: " + project.context : ""}`;
     sendUserMessage(contextMessage, null, null);
@@ -171,6 +177,13 @@ const App = () => {
         />
       )}
 
+      {showKnowledge && (
+        <KnowledgePanel
+          isDark={isDark}
+          onClose={() => setShowKnowledge(false)}
+        />
+      )}
+
       <Header
         isConnected={isConnected}
         isDark={isDark}
@@ -179,6 +192,7 @@ const App = () => {
         onLogout={handleLogout}
         onHistoryClick={handleHistoryClick}
         onProjectsClick={() => setShowProjects(true)}
+        onKnowledgeClick={() => setShowKnowledge(true)}
       />
 
       <main style={styles.main}>
@@ -218,7 +232,11 @@ const App = () => {
         <div ref={bottomRef} />
       </main>
 
-      <ModelSelector selectedModel={selectedModel} onModelChange={changeModel} isDark={isDark} />
+      <ModelSelector
+        selectedModel={selectedModel}
+        onModelChange={changeModel}
+        isDark={isDark}
+      />
       <ChatInput
         onSend={sendUserMessage}
         isLoading={isLoading}
@@ -282,4 +300,3 @@ const styles = {
 };
 
 export default App;
-
