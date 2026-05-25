@@ -1,0 +1,30 @@
+# ============================================
+# HERMES AI — Arquivos ignorados pelo Git
+# Protege credenciais e arquivos desnecessários
+# ============================================
+
+# Dependências
+node_modules/
+
+# Build gerado
+dist/
+
+# Variáveis de ambiente — NUNCA subir para o Git
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Firebase
+.firebase/

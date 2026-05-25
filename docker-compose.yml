@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # O Cérebro (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hermes_brain_ollama
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h # Mantém o modelo na memória para resposta instantânea
+
+  # A Ponte (Sua API Node.js)
+  hermes-api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hermes_backend_api
+    restart: always
+    network_mode: "host"
+    depends_on:
+      - ollama
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/hermes.sqlite:/app/hermes.sqlite
+      - ./backend/hermes.sqlite-shm:/app/hermes.sqlite-shm
+      - ./backend/hermes.sqlite-wal:/app/hermes.sqlite-wal
