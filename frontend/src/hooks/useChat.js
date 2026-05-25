@@ -93,7 +93,7 @@ const useChat = () => {
 
       const aiId = Date.now() + 2;
       setMessages((prev) => prev.filter((m) => m.id !== thinkingId).concat({
-        id: aiId, role: "assistant", content: "", time: getTime(),
+        id: aiId, role: "assistant", content: "", time: getTime(), modelKey: null,
       }));
 
       let fullResponse = "";
@@ -101,10 +101,10 @@ const useChat = () => {
         messageText || displayContent,
         history,
         imageBase64,
-        (token) => {
+        (token, done, mk) => {
           fullResponse += token;
           setMessages((prev) =>
-            prev.map((m) => m.id === aiId ? { ...m, content: fullResponse } : m)
+            prev.map((m) => m.id === aiId ? { ...m, content: fullResponse, ...(mk ? { modelKey: mk } : {}) } : m)
           );
         },
         audioBase64,

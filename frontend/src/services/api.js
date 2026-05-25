@@ -60,7 +60,10 @@ export const sendMessage = async (message, history = [], image = null, onToken =
         const json = JSON.parse(line.replace("data: ", ""))
         if (json.token) {
           fullResponse += json.token
-          if (onToken) onToken(json.token)
+          if (onToken) onToken(json.token, false, null)
+        }
+        if (json.done && json.modelKey && onToken) {
+          onToken("", true, json.modelKey)
         }
         if (json.error) throw new Error(json.error)
       } catch {}
@@ -73,7 +76,7 @@ export const sendMessage = async (message, history = [], image = null, onToken =
 export const uploadPDF = async (file) => {
   const headers = await authHeaders(false)
   const formData = new FormData()
-  formData.append("file", file)
+  formData.append("pdf", file)
   const response = await fetch(`${API_URL}/api/upload/pdf`, {
     method: "POST", headers, body: formData,
   })
@@ -100,31 +103,49 @@ export const MODELS = {
   "thiago-supremo":      { name: "👑 Thiago Supremo",      provider: "anthropic", free: false },
 }
 // --- BASE DE CONHECIMENTO ---
-export const uploadKnowledge = async (file) => {
-  const formData = new FormData();
-  formData.append("pdf", file);
-  const response = await fetch("https://hermes.olloapp.com.br/api/upload/pdf", {
-    method: "POST",
-    body: formData
-  });
-  if (!response.ok) throw new Error("Erro ao fazer upload");
-  return await response.json();
-};
+export const uploadKnowledge = async (files) => {
+  const headers = await authHeaders(false)
+  const results = { uploaded: [], errors: [] }
+  for (const file of files) {
+    try {
+      const formData = new FormData()
+      formData.append("pdf", file)
+      const response = await fetch(`${API_URL}/api/upload/pdf`, { method: "POST", headers, body: formData })
+      if (!response.ok) throw new Error("Erro ao fazer upload")
+      results.uploaded.push(file.name)
+    } catch { results.errors.push(file.name) }
+  }
+  return results
+}
+
+export const saveTextKnowledge = async (title, text) => {
+  const headers = await authHeaders(true)
+  const response = await fetch(`${API_URL}/api/knowledge/text`, {
+    method: "POST", headers,
+    body: JSON.stringify({ title, text })
+  })
+  if (!response.ok) throw new Error("Erro ao salvar texto")
+  return response.json()
+}
 
 export const listKnowledge = async () => {
-  const response = await fetch("https://hermes.olloapp.com.br/api/knowledge", { method: "GET" });
-  if (!response.ok) throw new Error("Erro ao listar");
-  return await response.json();
-};
+  const headers = await authHeaders(false)
+  const response = await fetch(`${API_URL}/api/knowledge`, { method: "GET", headers })
+  if (!response.ok) throw new Error("Erro ao listar")
+  const data = await response.json()
+  return { files: Array.isArray(data) ? data.map(f => ({ ...f, filetype: f.filetype || (f.filename?.endsWith(".pdf") ? "pdf" : "txt") })) : [] }
+}
 
 export const deleteKnowledge = async (id) => {
-  const response = await fetch("https://hermes.olloapp.com.br/api/knowledge/" + id, { method: "DELETE" });
-  if (!response.ok) throw new Error("Erro ao deletar");
-  return await response.json();
-};
+  const headers = await authHeaders(false)
+  const response = await fetch(`${API_URL}/api/knowledge/${id}`, { method: "DELETE", headers })
+  if (!response.ok) throw new Error("Erro ao deletar")
+  return response.json()
+}
 
 export const clearKnowledge = async () => {
-  const response = await fetch("https://hermes.olloapp.com.br/api/knowledge", { method: "DELETE" });
-  if (!response.ok) throw new Error("Erro ao limpar");
-  return await response.json();
-};
+  const headers = await authHeaders(false)
+  const response = await fetch(`${API_URL}/api/knowledge/clear`, { method: "DELETE", headers })
+  if (!response.ok) throw new Error("Erro ao limpar")
+  return response.json()
+}

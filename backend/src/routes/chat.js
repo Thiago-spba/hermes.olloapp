@@ -5,15 +5,34 @@ import { chatStream, extractMemoryFacts } from "../services/ollama.js"
 import { transcribeAudio } from "../services/whisper.js"
 import { saveMessage, getHistory, clearHistory, getPdfContext, getMemoryAsText, saveMemory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
-import { buildKnowledgeContext } from "../services/knowledgeService.js"
 
 const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime } = req.body
+    const { message, image, audio, audioMime, modelKey } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
+
+    // Comando /lembrar
+    if (finalMessage.startsWith('/lembrar ')) {
+      const fact = finalMessage.slice(9).trim()
+      const [key, ...rest] = fact.split(':')
+      if (key && rest.length) {
+        saveMemory(userId, key.trim(), rest.join(':').trim())
+        res.setHeader("Content-Type", "text/event-stream")
+        res.setHeader("Cache-Control", "no-cache")
+        res.flushHeaders()
+        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}
+
+`)
+        res.write(`data: ${JSON.stringify({ done: true })}
+
+`)
+        res.end()
+        return
+      }
+    }
 
     // Transcricao de audio
     if (audio) {
@@ -25,21 +44,13 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Contexto do PDF (sessao atual)
+    // Contexto do PDF
     const pdfContext = getPdfContext(userId)
     if (pdfContext && !image) {
       const query = finalMessage || "resuma este documento"
       const relevantChunks = findRelevantChunks(pdfContext.chunks, query, 3)
       const pdfText = relevantChunks.join("\n\n---\n\n")
       finalMessage = `${query}\n\nCONTEUDO DO DOCUMENTO "${pdfContext.filename}":\n\n${pdfText}`
-    }
-
-    // Base de conhecimento (multiplos arquivos persistentes)
-    if (!pdfContext && !image) {
-      const knowledgeContext = buildKnowledgeContext(userId, finalMessage)
-      if (knowledgeContext) {
-        finalMessage = `${finalMessage}\n\n${knowledgeContext}`
-      }
     }
 
     // Memoria persistente
@@ -56,13 +67,13 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     let fullResponse = ""
 
-    for await (const token of chatStream(finalMessage, dbHistory, image || null, "auto", memory)) {
+    for await (const token of chatStream(finalMessage, dbHistory, image || null, modelKey || "auto", memory)) {
       fullResponse += token
       res.write(`data: ${JSON.stringify({ token })}\n\n`)
     }
 
     saveMessage(userId, "assistant", fullResponse)
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}\n\n`)
     res.end()
 
     // Extrai fatos da conversa em background (nao bloqueia a resposta)
