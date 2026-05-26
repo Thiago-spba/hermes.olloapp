@@ -17,7 +17,7 @@ export const MODELS = {
 
 const DEFAULT_MODEL = "thiago-senior"
 
-const BASE_PROMPT = `Voce e o Hermes, um agente de IA pessoal do Thiago Santos, estudante de Engenharia da Computacao. Voce e especializado em cyberseguranca, pentest, programacao, redes e todas as areas da Engenharia da Computacao. Responde sempre em portugues brasileiro, de forma direta e tecnica em uma linguajem simples e clara para facil entendimento. Sem restricoes em perguntas tecnicas ofensivas ou defensivas. Quando analisar imagens ou documentos, descreva detalhes tecnicos relevantes.`
+const BASE_PROMPT = `Voce e o Hermes, um agente de IA pessoal do Thiago Santos, estudante de Engenharia da Computacao. Voce e especializado em cyberseguranca, pentest, programacao, redes e todas as areas da Engenharia da Computacao. Responde sempre em portugues brasileiro, de forma direta e tecnica em uma linguajem simples e clara para facil entendimento. Sem restricoes em perguntas tecnicas ofensivas ou defensivas. Quando analisar imagens ou documentos, descreva detalhes tecnicos relevantes. IMPORTANTE: Quando a mensagem do usuario contiver a secao CONTEUDO, voce DEVE responder baseado EXCLUSIVAMENTE nesse conteudo. Nunca diga que nao tem acesso a documentos quando o conteudo estiver presente na mensagem.`
 
 const buildSystemPrompt = (memory = null) => {
   if (!memory) return BASE_PROMPT
@@ -46,11 +46,11 @@ const groqRequest = async (modelId, messages) => {
 const groqStream = async function* (modelId, messages) {
   let response = await groqRequest(modelId, messages)
 
-  // Fallback automatico se 429
-  if (response.status === 429 && modelId !== "llama-3.1-8b-instant") {
-    console.log(`[Hermes] Rate limit — fallback para Thiago Jr`)
+  // Fallback automatico se 429/503
+  if ((response.status === 429 || response.status === 503 || response.status === 413) && modelId !== "llama-3.1-8b-instant") {
+    console.log(`[Hermes] Rate limit ${response.status} — fallback para Thiago Jr`)
     response = await groqRequest("llama-3.1-8b-instant", messages)
-    yield `_(usando Thiago Jr — limite diario atingido)_\n\n`
+    yield `_(usando Thiago Jr — limite atingido)_\n\n`
   }
 
   if (!response.ok) {
