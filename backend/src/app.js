@@ -26,35 +26,35 @@ app.use('/api/auth', authRoutes)
 app.use('/api/chat', chatRoutes)
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }))
-app.get('/api/knowledge', (req, res) => {
-  try { res.json(getKnowledgeList('default_user')); }
+app.get('/api/knowledge', auth, (req, res) => {
+  try { res.json(getKnowledgeList(req.user.id)); }
   catch (err) { res.status(500).json({ error: err.message }); }
 })
 
-app.post('/api/knowledge/text', (req, res) => {
+app.post('/api/knowledge/text', auth, (req, res) => {
   try {
     const { title, text } = req.body
     if (!title || !text) return res.status(400).json({ error: 'Titulo e texto obrigatorios' })
     const chunks = text.match(/.{1,4000}/gs) || [text]
-    saveKnowledge('default_user', title, 'txt', text, chunks)
+    saveKnowledge(req.user.id, title, 'txt', text, chunks)
     res.json({ message: 'Sucesso' })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
-app.delete('/api/knowledge/clear', (req, res) => {
-  try { dbClearKnowledge('default_user'); res.json({ success: true }) }
+app.delete('/api/knowledge/clear', auth, (req, res) => {
+  try { dbClearKnowledge(req.user.id); res.json({ success: true }) }
   catch (err) { res.status(500).json({ error: err.message }) }
 })
-app.delete('/api/knowledge/:id', (req, res) => {
-  try { dbDeleteKnowledge('default_user', req.params.id); res.json({ success: true }); }
+app.delete('/api/knowledge/:id', auth, (req, res) => {
+  try { dbDeleteKnowledge(req.user.id, req.params.id); res.json({ success: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 })
 
-app.post('/api/upload/pdf', multer({ storage: multer.memoryStorage() }).single('pdf'), async (req, res) => {
+app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage() }).single('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Arquivo nao enviado' })
     const fullText = req.file.originalname.endsWith('.pdf') ? await extractPdfText(req.file.buffer.toString('base64')) : req.file.buffer.toString('utf8');
     const chunks = chunkText(fullText, 4000);
-    saveKnowledge('default_user', req.file.originalname, req.file.originalname.endsWith('.pdf') ? 'pdf' : 'txt', fullText, chunks);
+    saveKnowledge(req.user.id, Buffer.from(req.file.originalname, 'latin1').toString('utf8'), req.file.originalname.endsWith('.pdf') ? 'pdf' : 'txt', fullText, chunks);
     res.json({ message: 'Sucesso' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 })
