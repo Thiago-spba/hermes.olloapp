@@ -128,7 +128,7 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
   const handleConfirm = () => {
     if (!preview) return;
     onCapture({
-      name: `foto_${Date.now()}.jpg`,
+      name: "📷 Foto capturada",
       type: "image/jpeg",
       size: 0,
       icon: "📷",

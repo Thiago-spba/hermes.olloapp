@@ -107,4 +107,3 @@ const styles = {
 };
 
 export default FilePreview;
-
