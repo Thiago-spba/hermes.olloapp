@@ -1,5 +1,7 @@
 import { memo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 const MODELS_LABEL = {
   "thiago-jr": "⚡ Jr",
@@ -23,6 +25,8 @@ const MD_STYLES = `
   .hermes-md table { border-collapse: collapse; width: 100%; margin: 8px 0; }
   .hermes-md th, .hermes-md td { border: 1px solid rgba(0,229,170,0.2); padding: 6px 10px; font-size: 0.9em; }
   .hermes-md th { background: rgba(0,229,170,0.1); }
+  .hermes-md .katex-display { overflow-x: auto; margin: 8px 0; }
+  .hermes-md .katex { font-size: 1em; }
 `;
 
 const ThinkingDots = ({ isDark }) => (
@@ -100,6 +104,10 @@ const ChatMessage = memo(({ message, isDark }) => {
       }}
     >
       <style>{MD_STYLES}</style>
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+      />
       {!isUser && (
         <img
           src="/favicon-96x96.png"
@@ -145,7 +153,12 @@ const ChatMessage = memo(({ message, isDark }) => {
                 color: isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
               }}
             >
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
             <div
               style={{
