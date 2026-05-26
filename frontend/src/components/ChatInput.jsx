@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import FileAttachment from "./FileAttachment";
 import FilePreview from "./FilePreview";
 import AudioRecorder from "./AudioRecorder";
@@ -37,11 +37,495 @@ const Heartbeat = ({ isDark }) => {
   );
 };
 
+// ============ CAMERA MODAL ============
+const CameraModal = ({ onCapture, onClose, isDark }) => {
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const [facingMode, setFacingMode] = useState("environment");
+  const [flash, setFlash] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [hasMultipleCameras, setHasMultipleCameras] = useState(false);
+  const [error, setError] = useState(null);
+  const [torch, setTorch] = useState(false);
+  const [gridOn, setGridOn] = useState(false);
+
+  const startCamera = useCallback(async (facing) => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facing,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setError(null);
+    } catch (e) {
+      setError("Câmera não disponível ou permissão negada.");
+    }
+  }, []);
+
+  useEffect(() => {
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        const videoDevices = devices.filter((d) => d.kind === "videoinput");
+        setHasMultipleCameras(videoDevices.length > 1);
+      })
+      .catch(() => {});
+    startCamera(facingMode);
+    return () => {
+      if (streamRef.current)
+        streamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const toggleCamera = () => {
+    const next = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(next);
+    setTorch(false);
+    startCamera(next);
+  };
+
+  const toggleTorch = async () => {
+    try {
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      const newTorch = !torch;
+      await track.applyConstraints({ advanced: [{ torch: newTorch }] });
+      setTorch(newTorch);
+    } catch {}
+  };
+
+  const handleCapture = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (facingMode === "user") {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 200);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    setPreview(dataUrl);
+  };
+
+  const handleConfirm = () => {
+    if (!preview) return;
+    onCapture({
+      name: `foto_${Date.now()}.jpg`,
+      type: "image/jpeg",
+      size: 0,
+      icon: "📷",
+      data: preview,
+    });
+    onClose();
+  };
+
+  const handleRetake = () => setPreview(null);
+
+  const c = {
+    bg: isDark ? "#071a14" : "#f0faf7",
+    panel: isDark ? "#0d2e1f" : "#ffffff",
+    border: isDark ? "#143d2e" : "#b0ddd4",
+    text: isDark ? "#e0f5f0" : "#071a14",
+    btn: isDark ? "#0a2218" : "#e0f5ef",
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 999,
+        backgroundColor: "rgba(0,0,0,0.95)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Flash */}
+      {flash && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "white",
+            zIndex: 1000,
+            opacity: 0.8,
+          }}
+        />
+      )}
+
+      {/* Header */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "600px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            border: "none",
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            cursor: "pointer",
+            color: "white",
+            fontSize: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          ✕
+        </button>
+        <span
+          style={{
+            color: "white",
+            fontSize: "14px",
+            fontWeight: "600",
+            letterSpacing: "1px",
+          }}
+        >
+          {preview ? "CONFIRMAR FOTO" : "CÂMERA"}
+        </span>
+        <button
+          onClick={() => setGridOn((v) => !v)}
+          style={{
+            background: gridOn
+              ? "rgba(0,229,255,0.3)"
+              : "rgba(255,255,255,0.1)",
+            border: gridOn ? "1px solid #00e5ff" : "none",
+            borderRadius: "50%",
+            width: "40px",
+            height: "40px",
+            cursor: "pointer",
+            color: gridOn ? "#00e5ff" : "white",
+            fontSize: "14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          ⊞
+        </button>
+      </div>
+
+      {/* Viewfinder */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "600px",
+          aspectRatio: "4/3",
+          backgroundColor: "#000",
+          overflow: "hidden",
+        }}
+      >
+        {error ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <span style={{ fontSize: "40px" }}>📷</span>
+            <span
+              style={{
+                color: "#ff6677",
+                fontSize: "13px",
+                textAlign: "center",
+                padding: "0 20px",
+              }}
+            >
+              {error}
+            </span>
+          </div>
+        ) : preview ? (
+          <img
+            src={preview}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transform: facingMode === "user" ? "scaleX(-1)" : "none",
+              }}
+            />
+            {/* Grid */}
+            {gridOn && (
+              <svg
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                }}
+              >
+                <line
+                  x1="33%"
+                  y1="0"
+                  x2="33%"
+                  y2="100%"
+                  stroke="rgba(255,255,255,0.3)"
+                  strokeWidth="1"
+                />
+                <line
+                  x1="66%"
+                  y1="0"
+                  x2="66%"
+                  y2="100%"
+                  stroke="rgba(255,255,255,0.3)"
+                  strokeWidth="1"
+                />
+                <line
+                  x1="0"
+                  y1="33%"
+                  x2="100%"
+                  y2="33%"
+                  stroke="rgba(255,255,255,0.3)"
+                  strokeWidth="1"
+                />
+                <line
+                  x1="0"
+                  y1="66%"
+                  x2="100%"
+                  y2="66%"
+                  stroke="rgba(255,255,255,0.3)"
+                  strokeWidth="1"
+                />
+              </svg>
+            )}
+            {/* Cantos do viewfinder */}
+            {["tl", "tr", "bl", "br"].map((pos) => (
+              <div
+                key={pos}
+                style={{
+                  position: "absolute",
+                  top: pos.startsWith("t") ? "12px" : "auto",
+                  bottom: pos.startsWith("b") ? "12px" : "auto",
+                  left: pos.endsWith("l") ? "12px" : "auto",
+                  right: pos.endsWith("r") ? "12px" : "auto",
+                  width: "20px",
+                  height: "20px",
+                  borderTop: pos.startsWith("t") ? "2px solid #00e5ff" : "none",
+                  borderBottom: pos.startsWith("b")
+                    ? "2px solid #00e5ff"
+                    : "none",
+                  borderLeft: pos.endsWith("l") ? "2px solid #00e5ff" : "none",
+                  borderRight: pos.endsWith("r") ? "2px solid #00e5ff" : "none",
+                }}
+              />
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Zoom slider — só quando não é preview */}
+      {!preview && !error && (
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "600px",
+            padding: "10px 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <span style={{ color: "#7aada0", fontSize: "11px" }}>1x</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.1"
+            value={zoom}
+            onChange={async (e) => {
+              const val = parseFloat(e.target.value);
+              setZoom(val);
+              try {
+                const track = streamRef.current?.getVideoTracks()[0];
+                const caps = track?.getCapabilities?.();
+                if (caps?.zoom)
+                  await track.applyConstraints({ advanced: [{ zoom: val }] });
+              } catch {}
+            }}
+            style={{ flex: 1, accentColor: "#00e5ff" }}
+          />
+          <span style={{ color: "#7aada0", fontSize: "11px" }}>3x</span>
+          <span
+            style={{
+              color: "#00e5ff",
+              fontSize: "12px",
+              fontWeight: "700",
+              minWidth: "30px",
+            }}
+          >
+            {zoom.toFixed(1)}x
+          </span>
+        </div>
+      )}
+
+      {/* Controles */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "600px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-around",
+          padding: "16px 24px 24px",
+        }}
+      >
+        {preview ? (
+          <>
+            <button
+              onClick={handleRetake}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                border: "none",
+                borderRadius: "12px",
+                padding: "12px 24px",
+                color: "white",
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              ↩ Repetir
+            </button>
+            <button
+              onClick={handleConfirm}
+              style={{
+                background: "linear-gradient(135deg, #00e5ff, #00c896)",
+                border: "none",
+                borderRadius: "12px",
+                padding: "12px 32px",
+                color: "#071a14",
+                fontSize: "14px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              ✓ Usar foto
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Lanterna */}
+            <button
+              onClick={toggleTorch}
+              style={{
+                background: torch
+                  ? "rgba(255,220,0,0.2)"
+                  : "rgba(255,255,255,0.1)",
+                border: torch ? "1px solid #ffdd00" : "none",
+                borderRadius: "50%",
+                width: "48px",
+                height: "48px",
+                cursor: "pointer",
+                fontSize: "20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              🔦
+            </button>
+
+            {/* Botão capturar */}
+            <button
+              onClick={handleCapture}
+              style={{
+                width: "72px",
+                height: "72px",
+                borderRadius: "50%",
+                background: "white",
+                border: "4px solid rgba(0,229,255,0.6)",
+                cursor: "pointer",
+                outline: "none",
+                boxShadow: "0 0 20px rgba(0,229,255,0.4)",
+                transition: "transform 0.1s",
+              }}
+              onMouseDown={(e) =>
+                (e.currentTarget.style.transform = "scale(0.92)")
+              }
+              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            />
+
+            {/* Virar câmera */}
+            {hasMultipleCameras && (
+              <button
+                onClick={toggleCamera}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "48px",
+                  height: "48px",
+                  cursor: "pointer",
+                  fontSize: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                🔄
+              </button>
+            )}
+            {!hasMultipleCameras && <div style={{ width: "48px" }} />}
+          </>
+        )}
+      </div>
+
+      <canvas ref={canvasRef} style={{ display: "none" }} />
+    </div>
+  );
+};
+
+// ============ CHAT INPUT ============
 const ChatInput = ({ onSend, isLoading, isDark }) => {
   const [text, setText] = useState("");
   const [attachedFile, setAttachedFile] = useState(null);
   const [attachedAudio, setAttachedAudio] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -75,6 +559,7 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
     setText(e.target.value);
     adjustHeight(e.target);
   };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -100,10 +585,22 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
     setAttachedFile(file);
     setAttachedAudio(null);
   };
+  const handleCameraCapture = (file) => {
+    setAttachedFile(file);
+    setAttachedAudio(null);
+  };
   const hasContent = text.trim() || attachedFile || attachedAudio;
 
   return (
     <>
+      {showCamera && (
+        <CameraModal
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+          isDark={isDark}
+        />
+      )}
+
       {isDragging && (
         <div
           style={{
@@ -194,20 +691,42 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
                   : "0 1px 3px rgba(0,0,0,0.05)",
           }}
         >
-          <div style={{ position: "relative" }}>
-            <FileAttachment
-              onFileSelect={handleFileSelect}
-              isDark={isDark}
-              disabled={isLoading || !!attachedAudio}
-            />
-          </div>
-          <div style={{ position: "relative" }}>
-            <AudioRecorder
-              onAudioReady={handleAudioReady}
-              isDark={isDark}
-              disabled={isLoading || !!attachedFile}
-            />
-          </div>
+          <FileAttachment
+            onFileSelect={handleFileSelect}
+            isDark={isDark}
+            disabled={isLoading || !!attachedAudio}
+          />
+          <AudioRecorder
+            onAudioReady={handleAudioReady}
+            isDark={isDark}
+            disabled={isLoading || !!attachedFile}
+          />
+
+          {/* Botão câmera */}
+          <button
+            onClick={() => setShowCamera(true)}
+            disabled={isLoading || !!attachedFile || !!attachedAudio}
+            title="Tirar foto"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor:
+                isLoading || !!attachedFile || !!attachedAudio
+                  ? "not-allowed"
+                  : "pointer",
+              padding: "4px",
+              borderRadius: "8px",
+              fontSize: "18px",
+              opacity: isLoading || !!attachedFile || !!attachedAudio ? 0.4 : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              transition: "opacity 0.2s",
+            }}
+          >
+            📷
+          </button>
 
           {isLoading ? (
             <div
@@ -226,23 +745,29 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
               value={text}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
-                onPaste={(e) => {
-                  const items = e.clipboardData?.items;
-                  if (!items) return;
-                  for (const item of items) {
-                    if (item.type.startsWith("image/")) {
-                      e.preventDefault();
-                      const file = item.getAsFile();
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        setAttachedFile({ name: "imagem_colada.png", type: file.type, size: file.size, icon: "🖼️", data: ev.target.result });
-                        setAttachedAudio(null);
-                      };
-                      reader.readAsDataURL(file);
-                      break;
-                    }
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                for (const item of items) {
+                  if (item.type.startsWith("image/")) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setAttachedFile({
+                        name: "imagem_colada.png",
+                        type: file.type,
+                        size: file.size,
+                        icon: "🖼️",
+                        data: ev.target.result,
+                      });
+                      setAttachedAudio(null);
+                    };
+                    reader.readAsDataURL(file);
+                    break;
                   }
-                }}
+                }
+              }}
               placeholder={
                 attachedAudio
                   ? "Adicione contexto ao audio..."
