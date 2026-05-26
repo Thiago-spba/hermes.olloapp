@@ -3,7 +3,7 @@ import auth from "../middleware/auth.js"
 import { validateChat } from "../middleware/sanitize.js"
 import { chatStream, extractMemoryFacts } from "../services/ollama.js"
 import { transcribeAudio } from "../services/whisper.js"
-import { saveMessage, getHistory, clearHistory, getPdfContext, getMemoryAsText, saveMemory } from "../services/database.js"
+import { saveMessage, getHistory, clearHistory, getKnowledgeChunks, getMemoryAsText, saveMemory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
 
 const router = Router()
@@ -44,13 +44,17 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Contexto do PDF
-    const pdfContext = getPdfContext(userId)
-    if (pdfContext && !image) {
-      const query = finalMessage || "resuma este documento"
-      const relevantChunks = findRelevantChunks(pdfContext.chunks, query, 3)
-      const pdfText = relevantChunks.join("\n\n---\n\n")
-      finalMessage = `${query}\n\nCONTEUDO DO DOCUMENTO "${pdfContext.filename}":\n\n${pdfText}`
+    // Base de Conhecimento
+    let usingKnowledge = false
+    if (!image) {
+      const allChunks = getKnowledgeChunks(userId)
+      if (allChunks.length > 0) {
+        usingKnowledge = true
+        const query = finalMessage || "resuma"
+        const texts = allChunks.map(c => c.text)
+        const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
+        finalMessage = `${query}\n\n<context>${relevant}</context>`
+      }
     }
 
     // Memoria persistente
@@ -58,7 +62,7 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     if (finalMessage) saveMessage(userId, "user", message || "[Audio enviado]")
 
-    const dbHistory = getHistory(userId, 20)
+    const dbHistory = usingKnowledge ? [] : getHistory(userId, 10)
 
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")

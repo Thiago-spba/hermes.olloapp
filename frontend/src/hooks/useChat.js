@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { sendMessage, uploadPDF } from "../services/api";
+import { sendMessage, uploadPDF, uploadKnowledge } from "../services/api";
 
 const getTime = () =>
   new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -65,14 +65,13 @@ const useChat = () => {
         if (file.type.startsWith("image/")) {
           imageBase64 = file.data;
         } else if (file.type === "application/pdf") {
-          const blob = await fetch(file.data).then((r) => r.blob());
-          const result = await uploadPDF(new File([blob], file.name, { type: file.type }));
+          const result = await uploadKnowledge([file.fileObj || new File([await fetch(file.data).then(r=>r.blob())], file.name, {type: file.type})]);
           const aiId = Date.now() + 2;
           setMessages((prev) => prev.filter((m) => m.id !== thinkingId).concat({
             id: aiId, role: "assistant", content: "", time: getTime(),
           }));
           setMessages((prev) => prev.map((m) =>
-            m.id === aiId ? { ...m, content: `[PDF] ${result.message} (${result.pages} paginas). Pode fazer perguntas sobre ele agora.` } : m
+            m.id === aiId ? { ...m, content: `PDF adicionado a Base de Conhecimento! Pode perguntar sobre ele agora.` } : m
           ));
           setIsLoading(false);
           return;
