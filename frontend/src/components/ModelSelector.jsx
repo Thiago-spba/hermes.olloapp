@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { MODELS } from "../services/api";
 
+const SUPREMO_PASSWORD = "Onze.12";
+
 const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
   const [open, setOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
 
-  const current = MODELS[selectedModel] || MODELS["thiago-senior"];
+  const current = MODELS[selectedModel] || MODELS["thiago-doutor"];
 
   const c = {
     bg: isDark ? "#0d2e1f" : "#ffffff",
@@ -14,8 +19,152 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
     hover: isDark ? "#143d2e" : "#e0f5ef",
   };
 
+  const handleSelectModel = (key) => {
+    if (key === "thiago-supremo") {
+      setShowPasswordModal(true);
+      setPassword("");
+      setPasswordError(false);
+      setOpen(false);
+    } else {
+      onModelChange(key);
+      setOpen(false);
+    }
+  };
+
+  const handlePasswordConfirm = () => {
+    if (password === SUPREMO_PASSWORD) {
+      onModelChange("thiago-supremo");
+      setShowPasswordModal(false);
+      setPassword("");
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+      setPassword("");
+    }
+  };
+
   return (
     <div style={{ position: "relative" }}>
+      {/* Modal de senha */}
+      {showPasswordModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 500,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: isDark ? "#0d2e1f" : "#ffffff",
+              border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+              borderRadius: "16px",
+              padding: "24px",
+              width: "280px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "8px" }}>👑</div>
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  color: isDark ? "#e0f5f0" : "#071a14",
+                }}
+              >
+                Thiago Supremo
+              </div>
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: isDark ? "#7aada0" : "#2a6b5a",
+                  marginTop: "4px",
+                }}
+              >
+                Digite a senha para ativar
+              </div>
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handlePasswordConfirm()}
+              placeholder="Senha"
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                border: `1px solid ${passwordError ? "#ff4455" : isDark ? "#143d2e" : "#b0ddd4"}`,
+                backgroundColor: isDark ? "#071a14" : "#f0faf7",
+                color: isDark ? "#e0f5f0" : "#071a14",
+                fontSize: "14px",
+                outline: "none",
+                boxSizing: "border-box",
+                marginBottom: "6px",
+              }}
+            />
+            {passwordError && (
+              <div
+                style={{
+                  fontSize: "11px",
+                  color: "#ff4455",
+                  marginBottom: "10px",
+                  textAlign: "center",
+                }}
+              >
+                Senha incorreta
+              </div>
+            )}
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword("");
+                  setPasswordError(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: "transparent",
+                  border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+                  color: isDark ? "#7aada0" : "#2a6b5a",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePasswordConfirm}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: "#00e5ff",
+                  border: "none",
+                  color: "#071a14",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={() => setOpen((v) => !v)}
         style={{
@@ -77,14 +226,16 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
             {Object.entries(MODELS).map(([key, model]) => (
               <button
                 key={key}
-                onClick={() => {
-                  onModelChange(key);
-                  setOpen(false);
-                }}
+                onClick={() => handleSelectModel(key)}
                 style={{
                   width: "100%",
                   padding: "10px 14px",
-                  backgroundColor: "transparent",
+                  backgroundColor:
+                    selectedModel === key
+                      ? isDark
+                        ? "#0a2218"
+                        : "#e0f5ef"
+                      : "transparent",
                   border: "none",
                   borderBottom: `1px solid ${c.border}`,
                   cursor: "pointer",
@@ -100,12 +251,6 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  backgroundColor:
-                    selectedModel === key
-                      ? isDark
-                        ? "#0a2218"
-                        : "#e0f5ef"
-                      : "transparent",
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor = c.hover)
@@ -119,7 +264,10 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
                       : "transparent")
                 }
               >
-                <span>{model.name}</span>
+                <span>
+                  {model.name}
+                  {key === "thiago-supremo" ? " 🔒" : ""}
+                </span>
                 <span
                   style={{
                     fontSize: "9px",

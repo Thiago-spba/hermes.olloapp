@@ -16,7 +16,7 @@ const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [selectedModel, setSelectedModel] = useState(() =>
-    localStorage.getItem("hermes-model") || "thiago-senior"
+    localStorage.getItem("hermes-model") || "thiago-doutor"
   );
 
   const loadMessages = useCallback((savedMessages) => {
