@@ -15,6 +15,7 @@ const Header = ({
   const [selectedVoice, setSelectedVoice] = useState(null);
   const [showVoices, setShowVoices] = useState(false);
   const [wakeLock, setWakeLock] = useState(false);
+  const [activeSection, setActiveSection] = useState(null);
   const [rate, setRate] = useState(() =>
     parseFloat(localStorage.getItem("hermes-rate") || "1.1"),
   );
@@ -76,12 +77,6 @@ const Header = ({
     window.speechSynthesis.speak(u);
   };
 
-  const handleRateChange = (newRate) => {
-    setRate(newRate);
-    window.hermesRate = newRate;
-    localStorage.setItem("hermes-rate", newRate);
-  };
-
   const toggleWakeLock = async () => {
     if (wakeLock) {
       try {
@@ -103,12 +98,14 @@ const Header = ({
   };
 
   const c = {
-    bg: isDark ? "#0a2218" : "#e0f5ef",
+    bg: isDark ? "rgba(7,26,20,0.95)" : "rgba(240,250,247,0.95)",
     border: isDark ? "#143d2e" : "#b0ddd4",
-    menuBg: isDark ? "#0d2e1f" : "#ffffff",
+    menuBg: isDark ? "#071a14" : "#ffffff",
     text: isDark ? "#e0f5f0" : "#071a14",
     sub: isDark ? "#7aada0" : "#2a6b5a",
-    hover: isDark ? "#143d2e" : "#e0f5ef",
+    hover: isDark ? "#0d2e1f" : "#e0f5ef",
+    accent: "#00e5ff",
+    green: "#00e5aa",
   };
 
   const fontSizes = [
@@ -117,7 +114,6 @@ const Header = ({
     { label: "G", value: 17 },
     { label: "GG", value: 19 },
   ];
-
   const speedOptions = [
     { label: "0.7x", value: 0.7 },
     { label: "1.0x", value: 1.0 },
@@ -126,8 +122,9 @@ const Header = ({
     { label: "2.0x", value: 2.0 },
   ];
 
-  const menuItems = [
+  const sections = [
     {
+      id: "knowledge",
       icon: "🧠",
       label: "Base de Conhecimento",
       action: () => {
@@ -136,6 +133,7 @@ const Header = ({
       },
     },
     {
+      id: "projects",
       icon: "📁",
       label: "Meus Projetos",
       action: () => {
@@ -144,6 +142,7 @@ const Header = ({
       },
     },
     {
+      id: "history",
       icon: "📋",
       label: "Histórico",
       action: () => {
@@ -151,34 +150,32 @@ const Header = ({
         setMenuOpen(false);
       },
     },
-    {
-      icon: isDark ? "☀️" : "🌙",
-      label: isDark ? "Modo Claro" : "Modo Escuro",
-      action: () => {
-        onToggleTheme();
-        setMenuOpen(false);
-      },
-    },
-    {
-      icon: "⏻",
-      label: "Sair",
-      action: () => {
-        onLogout();
-        setMenuOpen(false);
-      },
-      danger: true,
-    },
   ];
 
   return (
     <>
+      <style>{`
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        .hermes-menu-item:hover { background: ${c.hover} !important; }
+        .hermes-voice-item:hover { background: ${c.hover} !important; }
+        .hermes-section-btn { transition: all 0.2s ease; }
+        .hermes-section-btn:hover { background: ${c.hover} !important; transform: translateX(2px); }
+      `}</style>
+
       {menuOpen && (
         <div
           onClick={() => {
             setMenuOpen(false);
             setShowVoices(false);
+            setActiveSection(null);
           }}
-          style={{ position: "fixed", inset: 0, zIndex: 98 }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 98,
+            backdropFilter: "blur(2px)",
+          }}
         />
       )}
 
@@ -187,27 +184,47 @@ const Header = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "12px 16px",
+          padding: "10px 16px",
           position: "sticky",
           top: 0,
           zIndex: 100,
           backgroundColor: c.bg,
           borderBottom: `1px solid ${c.border}`,
-          transition: "background-color 0.3s ease",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          transition: "all 0.3s ease",
         }}
       >
+        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <img
-            src="/favicon-96x96.png"
-            alt="Hermes"
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              objectFit: "cover",
-              filter: "drop-shadow(0 0 6px #00e5ff)",
-            }}
-          />
+          <div style={{ position: "relative" }}>
+            <img
+              src="/favicon-96x96.png"
+              alt="Hermes"
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "50%",
+                objectFit: "cover",
+                filter: `drop-shadow(0 0 8px ${isConnected ? "#00e5ff" : "#ff4455"})`,
+                transition: "filter 0.3s ease",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "1px",
+                right: "1px",
+                width: "9px",
+                height: "9px",
+                borderRadius: "50%",
+                backgroundColor: isConnected ? "#00e5aa" : "#ff4455",
+                border: `2px solid ${isDark ? "#071a14" : "#f0faf7"}`,
+                boxShadow: `0 0 6px ${isConnected ? "#00e5aa" : "#ff4455"}`,
+                animation: isConnected ? "none" : "pulse 1.5s infinite",
+              }}
+            />
+          </div>
           <div
             style={{
               display: "flex",
@@ -217,457 +234,528 @@ const Header = ({
           >
             <span
               style={{
-                fontSize: "16px",
-                fontWeight: "700",
-                letterSpacing: "2px",
+                fontSize: "15px",
+                fontWeight: "800",
+                letterSpacing: "3px",
                 color: isDark ? "#00e5ff" : "#0099bb",
-                textShadow: isDark ? "0 0 8px rgba(0,229,255,0.4)" : "none",
+                textShadow: isDark ? "0 0 12px rgba(0,229,255,0.5)" : "none",
               }}
             >
               HERMES
             </span>
             <span
-              style={{ fontSize: "10px", letterSpacing: "1px", color: c.sub }}
+              style={{
+                fontSize: "9px",
+                letterSpacing: "1.5px",
+                color: c.sub,
+                textTransform: "uppercase",
+              }}
             >
-              AI Agent
+              AI Agent • {isConnected ? "Online" : "Offline"}
             </span>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <div
+        {/* Menu button */}
+        {user && (
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
               style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: isConnected ? "#00e5aa" : "#ff4455",
-                boxShadow: isConnected ? "0 0 6px #00e5aa" : "0 0 6px #ff4455",
+                backgroundColor: menuOpen ? c.hover : "transparent",
+                border: `1px solid ${menuOpen ? c.accent : c.border}`,
+                borderRadius: "10px",
+                width: "40px",
+                height: "40px",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                transition: "all 0.2s ease",
+                boxShadow: menuOpen ? `0 0 12px rgba(0,229,255,0.2)` : "none",
               }}
-            />
-            <span style={{ fontSize: "12px", color: c.sub }}>
-              {isConnected ? "Online" : "Offline"}
-            </span>
-          </div>
+            >
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: menuOpen ? (i === 1 ? "0px" : "14px") : "16px",
+                    height: "2px",
+                    backgroundColor: menuOpen
+                      ? c.accent
+                      : isDark
+                        ? "#00e5ff"
+                        : "#0099bb",
+                    borderRadius: "2px",
+                    transform: menuOpen
+                      ? i === 0
+                        ? "rotate(45deg) translate(5px, 5px)"
+                        : i === 2
+                          ? "rotate(-45deg) translate(5px, -5px)"
+                          : "scaleX(0)"
+                      : "none",
+                    transition: "all 0.25s ease",
+                    transformOrigin: "center",
+                  }}
+                />
+              ))}
+            </button>
 
-          {user && (
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
+            {menuOpen && (
+              <div
                 style={{
-                  backgroundColor: menuOpen ? c.hover : "transparent",
+                  position: "absolute",
+                  top: "48px",
+                  right: 0,
+                  zIndex: 200,
+                  backgroundColor: c.menuBg,
                   border: `1px solid ${c.border}`,
-                  borderRadius: "8px",
-                  width: "36px",
-                  height: "36px",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "4px",
+                  borderRadius: "16px",
+                  width: "260px",
+                  overflow: "hidden",
+                  boxShadow: isDark
+                    ? "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,229,255,0.05)"
+                    : "0 16px 48px rgba(0,0,0,0.15)",
+                  animation: "slideDown 0.2s ease",
                 }}
               >
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: "16px",
-                      height: "2px",
-                      backgroundColor: isDark ? "#00e5ff" : "#0099bb",
-                      borderRadius: "2px",
-                    }}
-                  />
-                ))}
-              </button>
-
-              {menuOpen && (
+                {/* Perfil */}
                 <div
                   style={{
-                    position: "absolute",
-                    top: "44px",
-                    right: 0,
-                    zIndex: 200,
-                    backgroundColor: c.menuBg,
-                    border: `1px solid ${c.border}`,
-                    borderRadius: "12px",
-                    minWidth: "220px",
-                    overflow: "hidden",
-                    boxShadow: isDark
-                      ? "0 8px 32px rgba(0,0,0,0.6)"
-                      : "0 8px 32px rgba(0,0,0,0.15)",
+                    padding: "16px",
+                    borderBottom: `1px solid ${c.border}`,
+                    background: isDark
+                      ? "linear-gradient(135deg, #0d2e1f, #071a14)"
+                      : "linear-gradient(135deg, #e0f5ef, #f0faf7)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
                   }}
                 >
-                  {/* Perfil */}
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      borderBottom: `1px solid ${c.border}`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                    }}
-                  >
-                    {user.photoURL ? (
-                      <img
-                        src={user.photoURL}
-                        alt={user.displayName}
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          border: "2px solid #00e5ff",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          backgroundColor: isDark ? "#143d2e" : "#ccede5",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: "700",
-                          color: isDark ? "#00e5ff" : "#0099bb",
-                          border: "2px solid #00e5ff",
-                        }}
-                      >
-                        {(user.displayName ||
-                          user.email ||
-                          "U")[0].toUpperCase()}
-                      </div>
-                    )}
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: "600",
-                          color: c.text,
-                        }}
-                      >
-                        {user.displayName || "Usuário"}
-                      </span>
-                      <span style={{ fontSize: "11px", color: c.sub }}>
-                        {user.email}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Zoom / Tamanho de fonte */}
-                  <div
-                    style={{
-                      borderBottom: `1px solid ${c.border}`,
-                      padding: "10px 16px",
-                    }}
-                  >
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName}
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        border: `2px solid ${c.accent}`,
+                        boxShadow: "0 0 12px rgba(0,229,255,0.3)",
+                      }}
+                    />
+                  ) : (
                     <div
                       style={{
-                        fontSize: "12px",
-                        color: c.sub,
-                        marginBottom: "8px",
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        backgroundColor: isDark ? "#143d2e" : "#ccede5",
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
+                        justifyContent: "center",
+                        fontWeight: "800",
+                        fontSize: "16px",
+                        color: isDark ? "#00e5ff" : "#0099bb",
+                        border: `2px solid ${c.accent}`,
+                        boxShadow: "0 0 12px rgba(0,229,255,0.3)",
                       }}
                     >
-                      <span>🔍</span>
-                      <span>
-                        Tamanho do texto:{" "}
-                        <strong style={{ color: c.text }}>{fontSize}px</strong>
-                      </span>
+                      {(user.displayName || user.email || "U")[0].toUpperCase()}
                     </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      {fontSizes.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => setFontSize(opt.value)}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                            cursor: "pointer",
-                            backgroundColor:
-                              fontSize === opt.value
-                                ? "#00e5ff"
-                                : isDark
-                                  ? "#071a14"
-                                  : "#e0f5ef",
-                            border: `1px solid ${fontSize === opt.value ? "#00e5ff" : c.border}`,
-                            color: fontSize === opt.value ? "#071a14" : c.sub,
-                            fontWeight: fontSize === opt.value ? "700" : "400",
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Voz */}
-                  <div style={{ borderBottom: `1px solid ${c.border}` }}>
-                    <button
-                      onClick={() => setShowVoices((v) => !v)}
+                  )}
+                  <div>
+                    <div
                       style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        backgroundColor: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
                         fontSize: "13px",
+                        fontWeight: "700",
                         color: c.text,
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = c.hover)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
                     >
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        <span>🔊</span>
-                        <span>
-                          Voz:{" "}
-                          {selectedVoice
-                            ? selectedVoice.name
-                                .split(" ")
-                                .slice(0, 2)
-                                .join(" ")
-                            : "Carregando..."}
-                        </span>
-                      </span>
-                      <span style={{ fontSize: "10px", color: c.sub }}>
-                        {showVoices ? "▲" : "▼"}
-                      </span>
-                    </button>
-
-                    {showVoices && (
-                      <div
-                        style={{
-                          maxHeight: "180px",
-                          overflowY: "auto",
-                          backgroundColor: isDark ? "#071a14" : "#f5faf8",
-                        }}
-                      >
-                        {voices.length === 0 ? (
-                          <div
-                            style={{
-                              padding: "10px 20px",
-                              fontSize: "12px",
-                              color: c.sub,
-                            }}
-                          >
-                            Nenhuma voz disponível
-                          </div>
-                        ) : (
-                          voices.map((v) => (
-                            <button
-                              key={v.name}
-                              onClick={() => handleVoiceSelect(v)}
-                              style={{
-                                width: "100%",
-                                padding: "8px 20px",
-                                backgroundColor:
-                                  selectedVoice?.name === v.name
-                                    ? isDark
-                                      ? "#143d2e"
-                                      : "#ccede5"
-                                    : "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                                textAlign: "left",
-                                fontSize: "12px",
-                                color:
-                                  selectedVoice?.name === v.name
-                                    ? isDark
-                                      ? "#00e5ff"
-                                      : "#0099bb"
-                                    : c.sub,
-                                display: "flex",
-                                justifyContent: "space-between",
-                              }}
-                              onMouseEnter={(e) =>
-                                (e.currentTarget.style.backgroundColor =
-                                  c.hover)
-                              }
-                              onMouseLeave={(e) =>
-                                (e.currentTarget.style.backgroundColor =
-                                  selectedVoice?.name === v.name
-                                    ? isDark
-                                      ? "#143d2e"
-                                      : "#ccede5"
-                                    : "transparent")
-                              }
-                            >
-                              <span>
-                                {v.name.split(" ").slice(0, 2).join(" ")}
-                              </span>
-                              <span style={{ fontSize: "10px", opacity: 0.5 }}>
-                                {v.lang}
-                              </span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Velocidade */}
-                  <div
-                    style={{
-                      borderBottom: `1px solid ${c.border}`,
-                      padding: "10px 16px",
-                    }}
-                  >
+                      {user.displayName || "Usuário"}
+                    </div>
                     <div
                       style={{
-                        fontSize: "12px",
+                        fontSize: "10px",
                         color: c.sub,
-                        marginBottom: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
+                        marginTop: "2px",
                       }}
                     >
-                      <span>⚡</span>
-                      <span>
-                        Velocidade:{" "}
-                        <strong style={{ color: c.text }}>{rate}x</strong>
-                      </span>
-                    </div>
-                    <div
-                      style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}
-                    >
-                      {speedOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => handleRateChange(opt.value)}
-                          style={{
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "11px",
-                            cursor: "pointer",
-                            backgroundColor:
-                              rate === opt.value
-                                ? "#00e5ff"
-                                : isDark
-                                  ? "#071a14"
-                                  : "#e0f5ef",
-                            border: `1px solid ${rate === opt.value ? "#00e5ff" : c.border}`,
-                            color: rate === opt.value ? "#071a14" : c.sub,
-                            fontWeight: rate === opt.value ? "700" : "400",
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                      {user.email}
                     </div>
                   </div>
+                </div>
 
-                  {/* Manter tela ativa */}
+                {/* Ações rápidas */}
+                <div
+                  style={{
+                    padding: "8px",
+                    borderBottom: `1px solid ${c.border}`,
+                    display: "flex",
+                    gap: "6px",
+                  }}
+                >
+                  {sections.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={s.action}
+                      className="hermes-section-btn"
+                      style={{
+                        flex: 1,
+                        padding: "10px 6px",
+                        backgroundColor: "transparent",
+                        border: `1px solid ${c.border}`,
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontSize: "18px",
+                      }}
+                    >
+                      <span>{s.icon}</span>
+                      <span
+                        style={{
+                          fontSize: "9px",
+                          color: c.sub,
+                          textAlign: "center",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {s.label.split(" ")[0]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tamanho de fonte */}
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderBottom: `1px solid ${c.border}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: c.sub,
+                      marginBottom: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>🔍</span> Texto:{" "}
+                    <strong style={{ color: c.text }}>{fontSize}px</strong>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {fontSizes.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setFontSize(opt.value)}
+                        style={{
+                          flex: 1,
+                          padding: "5px",
+                          borderRadius: "8px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          backgroundColor:
+                            fontSize === opt.value
+                              ? c.accent
+                              : isDark
+                                ? "#0d2e1f"
+                                : "#e0f5ef",
+                          border: `1px solid ${fontSize === opt.value ? c.accent : c.border}`,
+                          color: fontSize === opt.value ? "#071a14" : c.sub,
+                          fontWeight: fontSize === opt.value ? "700" : "400",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Voz */}
+                <div style={{ borderBottom: `1px solid ${c.border}` }}>
                   <button
-                    onClick={toggleWakeLock}
+                    onClick={() => setShowVoices((v) => !v)}
+                    className="hermes-menu-item"
                     style={{
                       width: "100%",
                       padding: "12px 16px",
-                      backgroundColor: wakeLock
-                        ? isDark
-                          ? "#143d2e"
-                          : "#ccede5"
-                        : "transparent",
+                      backgroundColor: "transparent",
                       border: "none",
-                      borderBottom: `1px solid ${c.border}`,
                       cursor: "pointer",
                       textAlign: "left",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                       fontSize: "13px",
-                      color: wakeLock
-                        ? isDark
-                          ? "#00e5aa"
-                          : "#007a55"
-                        : c.text,
+                      color: c.text,
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = c.hover)
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = wakeLock
-                        ? isDark
-                          ? "#143d2e"
-                          : "#ccede5"
-                        : "transparent")
-                    }
                   >
                     <span
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        gap: "8px",
                       }}
                     >
-                      <span>📱</span>
-                      <span>Manter tela ativa</span>
+                      <span style={{ fontSize: "16px" }}>🔊</span>
+                      <span style={{ fontSize: "12px" }}>
+                        {selectedVoice
+                          ? selectedVoice.name.split(" ").slice(0, 2).join(" ")
+                          : "Carregando..."}
+                      </span>
                     </span>
                     <span
                       style={{
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        color: wakeLock ? "#00e5aa" : c.sub,
+                        fontSize: "9px",
+                        color: c.sub,
+                        transition: "transform 0.2s",
+                        display: "inline-block",
+                        transform: showVoices ? "rotate(180deg)" : "none",
                       }}
                     >
-                      {wakeLock ? "ON ●" : "OFF"}
+                      ▼
                     </span>
                   </button>
 
-                  {/* Menu items */}
-                  {menuItems.map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={item.action}
+                  {showVoices && (
+                    <div
                       style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        backgroundColor: "transparent",
-                        border: "none",
-                        borderBottom: `1px solid ${c.border}`,
-                        cursor: "pointer",
-                        textAlign: "left",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        fontSize: "13px",
-                        color: item.danger ? "#ff4455" : c.text,
-                        fontWeight: item.danger ? "600" : "400",
+                        maxHeight: "160px",
+                        overflowY: "auto",
+                        backgroundColor: isDark ? "#040f0a" : "#f5faf8",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = c.hover)
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
                     >
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
+                      {voices.length === 0 ? (
+                        <div
+                          style={{
+                            padding: "10px 20px",
+                            fontSize: "12px",
+                            color: c.sub,
+                          }}
+                        >
+                          Nenhuma voz disponível
+                        </div>
+                      ) : (
+                        voices.map((v) => (
+                          <button
+                            key={v.name}
+                            onClick={() => handleVoiceSelect(v)}
+                            className="hermes-voice-item"
+                            style={{
+                              width: "100%",
+                              padding: "8px 16px",
+                              backgroundColor:
+                                selectedVoice?.name === v.name
+                                  ? isDark
+                                    ? "#143d2e"
+                                    : "#ccede5"
+                                  : "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              fontSize: "12px",
+                              color:
+                                selectedVoice?.name === v.name
+                                  ? isDark
+                                    ? "#00e5ff"
+                                    : "#0099bb"
+                                  : c.sub,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <span>
+                              {v.name.split(" ").slice(0, 3).join(" ")}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: "9px",
+                                opacity: 0.5,
+                                backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
+                                padding: "1px 5px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              {v.lang}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {/* Velocidade */}
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderBottom: `1px solid ${c.border}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: c.sub,
+                      marginBottom: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <span>⚡</span> Velocidade:{" "}
+                    <strong style={{ color: c.text }}>{rate}x</strong>
+                  </div>
+                  <div
+                    style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}
+                  >
+                    {speedOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          setRate(opt.value);
+                          window.hermesRate = opt.value;
+                          localStorage.setItem("hermes-rate", opt.value);
+                        }}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "8px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          backgroundColor:
+                            rate === opt.value
+                              ? c.accent
+                              : isDark
+                                ? "#0d2e1f"
+                                : "#e0f5ef",
+                          border: `1px solid ${rate === opt.value ? c.accent : c.border}`,
+                          color: rate === opt.value ? "#071a14" : c.sub,
+                          fontWeight: rate === opt.value ? "700" : "400",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tela ativa */}
+                <button
+                  onClick={toggleWakeLock}
+                  className="hermes-menu-item"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: wakeLock
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: wakeLock ? (isDark ? "#00e5aa" : "#007a55") : c.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span>📱</span>
+                    <span>Manter tela ativa</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: wakeLock
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: wakeLock ? "#00e5aa" : c.sub,
+                      border: wakeLock ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {wakeLock ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Tema */}
+                <button
+                  onClick={() => {
+                    onToggleTheme();
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "13px",
+                    color: c.text,
+                  }}
+                >
+                  <span>{isDark ? "☀️" : "🌙"}</span>
+                  <span>{isDark ? "Modo Claro" : "Modo Escuro"}</span>
+                </button>
+
+                {/* Sair */}
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "13px",
+                    color: "#ff4455",
+                    fontWeight: "600",
+                  }}
+                >
+                  <span>⏻</span>
+                  <span>Sair</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </header>
     </>
   );
