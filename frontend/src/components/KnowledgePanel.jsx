@@ -5,6 +5,8 @@ import {
   deleteKnowledge,
   clearKnowledge,
   saveTextKnowledge,
+  getKnowledgeContent,
+  updateKnowledge,
 } from "../services/api";
 
 const KnowledgePanel = ({ isDark, onClose }) => {
@@ -16,10 +18,14 @@ const KnowledgePanel = ({ isDark, onClose }) => {
   const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
   const [savingText, setSavingText] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const fileInputRef = useRef(null);
 
   const c = {
-    bg: isDark ? "#071a14" : "#f0faf7",
     panel: isDark ? "#0d2e1f" : "#ffffff",
     border: isDark ? "#143d2e" : "#b0ddd4",
     text: isDark ? "#e0f5f0" : "#071a14",
@@ -88,6 +94,41 @@ const KnowledgePanel = ({ isDark, onClose }) => {
     }
   };
 
+  const handleEdit = async (file) => {
+    if (file.filetype !== "txt") return;
+    setLoadingEdit(true);
+    try {
+      const data = await getKnowledgeContent(file.id);
+      setEditingItem(file);
+      setEditTitle(data.filename || "");
+      setEditContent(data.content || "");
+    } catch {
+      showMessage("Erro ao carregar conteudo.", "error");
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTitle.trim() || !editContent.trim())
+      return showMessage("Preencha o titulo e o texto.", "warn");
+    setSavingEdit(true);
+    try {
+      await updateKnowledge(
+        editingItem.id,
+        editTitle.trim(),
+        editContent.trim(),
+      );
+      showMessage("Texto atualizado!", "ok");
+      setEditingItem(null);
+      await fetchFiles();
+    } catch {
+      showMessage("Erro ao atualizar.", "error");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleDelete = async (id, filename) => {
     if (!confirm(`Remover "${filename}" da base?`)) return;
     try {
@@ -122,6 +163,177 @@ const KnowledgePanel = ({ isDark, onClose }) => {
       year: "2-digit",
     });
 
+  // Modal de edição
+  if (editingItem) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 300,
+          backgroundColor: "rgba(0,0,0,0.6)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "768px",
+            backgroundColor: c.panel,
+            borderRadius: "20px 20px 0 0",
+            border: `1px solid ${c.border}`,
+            maxHeight: "90dvh",
+            display: "flex",
+            flexDirection: "column",
+            boxShadow: "0 -8px 32px rgba(0,0,0,0.4)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "18px 20px",
+              borderBottom: `1px solid ${c.border}`,
+            }}
+          >
+            <div style={{ fontSize: "15px", fontWeight: "700", color: c.text }}>
+              ✏️ Editar texto
+            </div>
+            <button
+              onClick={() => setEditingItem(null)}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: "20px",
+                cursor: "pointer",
+                color: c.sub,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "16px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  fontSize: "12px",
+                  color: c.sub,
+                  display: "block",
+                  marginBottom: "6px",
+                }}
+              >
+                Titulo
+              </label>
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  backgroundColor: c.input,
+                  border: `1px solid ${c.border}`,
+                  borderRadius: "8px",
+                  color: c.text,
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  fontSize: "12px",
+                  color: c.sub,
+                  display: "block",
+                  marginBottom: "6px",
+                }}
+              >
+                Conteudo
+              </label>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={12}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  backgroundColor: c.input,
+                  border: `1px solid ${c.border}`,
+                  borderRadius: "8px",
+                  color: c.text,
+                  fontSize: "13px",
+                  lineHeight: "1.6",
+                  outline: "none",
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+            <div style={{ fontSize: "11px", color: c.sub }}>
+              {editContent.length} caracteres · ~
+              {Math.ceil(editContent.length / 4)} tokens
+            </div>
+          </div>
+          <div
+            style={{
+              padding: "16px 20px",
+              borderTop: `1px solid ${c.border}`,
+              display: "flex",
+              gap: "10px",
+            }}
+          >
+            <button
+              onClick={() => setEditingItem(null)}
+              style={{
+                padding: "12px 16px",
+                backgroundColor: "transparent",
+                border: `1px solid ${c.border}`,
+                borderRadius: "10px",
+                fontSize: "13px",
+                color: c.sub,
+                cursor: "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={savingEdit}
+              style={{
+                flex: 1,
+                padding: "12px",
+                backgroundColor: c.accent,
+                border: "none",
+                borderRadius: "10px",
+                fontSize: "14px",
+                fontWeight: "700",
+                color: "#071a14",
+                cursor: savingEdit ? "not-allowed" : "pointer",
+                opacity: savingEdit ? 0.7 : 1,
+              }}
+            >
+              {savingEdit ? "Salvando..." : "💾 Salvar alterações"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -147,7 +359,6 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           boxShadow: "0 -8px 32px rgba(0,0,0,0.4)",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -184,7 +395,6 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           </button>
         </div>
 
-        {/* Tabs */}
         <div style={{ display: "flex", borderBottom: `1px solid ${c.border}` }}>
           {[
             ["files", "📂 Arquivos"],
@@ -214,7 +424,6 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           ))}
         </div>
 
-        {/* Feedback */}
         {message && (
           <div
             style={{
@@ -247,7 +456,6 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           </div>
         )}
 
-        {/* Conteudo */}
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px" }}>
           {tab === "files" ? (
             loading ? (
@@ -321,20 +529,38 @@ const KnowledgePanel = ({ isDark, onClose }) => {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDelete(file.id, file.filename)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: c.danger,
-                      fontSize: "16px",
-                      padding: "4px 8px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    🗑️
-                  </button>
+                  <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                    {file.filetype === "txt" && (
+                      <button
+                        onClick={() => handleEdit(file)}
+                        disabled={loadingEdit}
+                        style={{
+                          background: "transparent",
+                          border: `1px solid ${c.border}`,
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          color: c.accent,
+                          fontSize: "14px",
+                          padding: "4px 8px",
+                        }}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(file.id, file.filename)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: c.danger,
+                        fontSize: "16px",
+                        padding: "4px 8px",
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))
             )
@@ -415,7 +641,6 @@ const KnowledgePanel = ({ isDark, onClose }) => {
           )}
         </div>
 
-        {/* Acoes */}
         <div
           style={{
             padding: "16px 20px",

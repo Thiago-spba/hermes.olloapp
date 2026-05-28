@@ -62,7 +62,7 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     if (finalMessage) saveMessage(userId, "user", message || "[Audio enviado]")
 
-    const dbHistory = usingKnowledge ? [] : getHistory(userId, 10)
+    const dbHistory = getHistory(userId, 10)
 
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
