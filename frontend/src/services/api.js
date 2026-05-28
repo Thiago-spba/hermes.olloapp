@@ -149,3 +149,21 @@ export const clearKnowledge = async () => {
   if (!response.ok) throw new Error("Erro ao limpar")
   return response.json()
 }
+
+
+export const getKnowledgeContent = async (id) => {
+  const headers = await authHeaders(false)
+  const response = await fetch(`${API_URL}/api/knowledge/${id}/content`, { method: 'GET', headers })
+  if (!response.ok) throw new Error('Erro ao buscar conteudo')
+  return response.json()
+}
+
+export const updateKnowledge = async (id, title, content) => {
+  const headers = await authHeaders(true)
+  const response = await fetch(`${API_URL}/api/knowledge/${id}`, {
+    method: 'PUT', headers,
+    body: JSON.stringify({ title, content })
+  })
+  if (!response.ok) throw new Error('Erro ao atualizar')
+  return response.json()
+}
