@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "./services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import Header from "./components/Header";
@@ -23,6 +23,7 @@ const App = () => {
   const [showProjects, setShowProjects] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
   const bottomRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -50,6 +51,56 @@ const App = () => {
     changeModel,
   } = useChat();
 
+  // ============================================
+  // AUTO-SCROLL PARA A PERGUNTA ATUAL (QUE VOCÊ FEZ)
+  // ============================================
+  const scrollToCurrentQuestion = useCallback(() => {
+    // Encontra a última mensagem do usuário pelo texto no state
+    const lastUserMessageObj = [...messages]
+      .reverse()
+      .find((m) => m.role === "user");
+    if (!lastUserMessageObj) return;
+
+    // Procura o elemento que contém o texto da pergunta
+    const allTextElements = document.querySelectorAll(".hermes-md");
+    for (const el of allTextElements) {
+      if (
+        el.textContent.includes(lastUserMessageObj.content.substring(0, 100))
+      ) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+
+    // Fallback: scroll para o último elemento de mensagem do usuário
+    const allBubbles = document.querySelectorAll('[style*="flex-end"]');
+    const lastUserBubble = allBubbles[allBubbles.length - 1];
+    if (lastUserBubble) {
+      lastUserBubble.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [messages]);
+
+  // Scroll quando UMA NOVA MENSAGEM é adicionada
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToCurrentQuestion();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [messages, scrollToCurrentQuestion]);
+
+  // Scroll inicial quando o chat carrega
+  useEffect(() => {
+    if (messages.length > 0) {
+      const timer = setTimeout(() => {
+        scrollToCurrentQuestion();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, scrollToCurrentQuestion]);
+
+  // ============================================
+  // AUTH E TEMAS
+  // ============================================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -68,7 +119,7 @@ const App = () => {
     if (conversationId && messages.length > 1) {
       onMessagesUpdate(messages);
     }
-  }, [messages]);
+  }, [conversationId, messages, onMessagesUpdate]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -89,10 +140,9 @@ const App = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
+  // ============================================
+  // HANDLERS
+  // ============================================
   const handleLogout = async () => {
     await signOut(auth);
     clearChat();
@@ -120,6 +170,9 @@ const App = () => {
     sendUserMessage(contextMessage, null, null);
   };
 
+  // ============================================
+  // LOADING
+  // ============================================
   if (authLoading) {
     return (
       <div
@@ -144,6 +197,9 @@ const App = () => {
     );
   }
 
+  // ============================================
+  // RENDER
+  // ============================================
   return (
     <div
       style={{ ...styles.app, backgroundColor: isDark ? "#071a14" : "#f0faf7" }}
@@ -196,6 +252,10 @@ const App = () => {
       />
 
       <main style={styles.main}>
+        {messages.map((message) => (
+          <ChatMessage key={message.id} message={message} isDark={isDark} />
+        ))}
+
         {isLoading && (
           <div style={styles.typing}>
             <div
@@ -212,10 +272,6 @@ const App = () => {
           </div>
         )}
 
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} isDark={isDark} />
-        ))}
-
         {messages.length > 1 && (
           <button
             onClick={handleNewConversation}
@@ -229,7 +285,7 @@ const App = () => {
           </button>
         )}
 
-        <div ref={bottomRef} />
+        <div ref={messagesEndRef} />
       </main>
 
       <ModelSelector

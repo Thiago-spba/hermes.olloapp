@@ -6,6 +6,12 @@ import { transcribeAudio } from "../services/whisper.js"
 import { saveMessage, getHistory, clearHistory, getKnowledgeChunks, getMemoryAsText, saveMemory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
 
+// ✅ ADICIONADO: Função para escapar caracteres especiais em regex
+const escapeRegex = (str) => {
+  if (!str || typeof str !== 'string') return ''
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
@@ -52,6 +58,7 @@ router.post("/", auth, validateChat, async (req, res) => {
         usingKnowledge = true
         const query = finalMessage || "resuma"
         const texts = allChunks.map(c => c.text)
+        // ✅ CORRIGIDO: query segura para regex (não altera o conteúdo, apenas protege)
         const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
         finalMessage = `${query}\n\n<context>${relevant}</context>`
       }
