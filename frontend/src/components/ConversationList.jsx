@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { deleteConversation } from "../services/firestoreService";
+import {
+  deleteConversation,
+  finishConversation,
+} from "../services/firestoreService";
 
 const ConversationList = ({
   conversations,
@@ -12,16 +15,20 @@ const ConversationList = ({
   userId,
 }) => {
   const [showDeleteMenu, setShowDeleteMenu] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (editingId) setEditingId(null);
+        else onClose();
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, []);
+  }, [editingId]);
 
-  // FILTRO: Só considera conversas que tenham pelo menos 1 mensagem do usuário (Thiago)
   const validConversations = conversations.filter(
     (conv) => conv.messages && conv.messages.some((m) => m.role === "user"),
   );
@@ -43,13 +50,39 @@ const ConversationList = ({
   };
 
   const getTitle = (conv) => {
-    if (conv.title && conv.title !== "Nova conversa") return conv.title;
+    if (
+      conv.title &&
+      conv.title !== "Nova conversa" &&
+      conv.title !== "Conversa sem título"
+    )
+      return conv.title;
     const first = conv.messages?.find((m) => m.role === "user");
-    if (first?.content)
-      return (
-        first.content.slice(0, 40) + (first.content.length > 40 ? "..." : "")
-      );
-    return "Conversa sem título";
+    if (!first?.content) return "Conversa sem título";
+    const cleaned = first.content
+      .trim()
+      .replace(
+        /^(me explica|me explique|o que é|o que são|como funciona|como fazer|qual é|quais são|fale sobre|explica|explique|define|definição de|me fala sobre|me diz|quero saber)\s+/i,
+        "",
+      )
+      .trim();
+    const titled = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    return titled.length > 45 ? titled.slice(0, 45) + "..." : titled;
+  };
+
+  // ✅ Salva título editado
+  const handleSaveTitle = async (convId) => {
+    const trimmed = editingTitle.trim();
+    if (!trimmed) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      await finishConversation(userId, convId, trimmed);
+      conversations.find((c) => c.id === convId).title = trimmed;
+    } catch (err) {
+      console.error(err);
+    }
+    setEditingId(null);
   };
 
   const handleDelete = async (e, conv) => {
@@ -110,7 +143,9 @@ const ConversationList = ({
   return (
     <>
       <div
-        onClick={onClose}
+        onClick={() => {
+          if (!editingId) onClose();
+        }}
         style={{
           position: "fixed",
           inset: 0,
@@ -274,57 +309,141 @@ const ConversationList = ({
                   (e.currentTarget.style.backgroundColor = "transparent")
                 }
               >
-                <button
-                  onClick={() => {
-                    onSelect(conv);
-                    onClose();
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "12px 16px",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                  }}
-                >
-                  <span
+                {editingId === conv.id ? (
+                  // ✅ Modo edição inline
+                  <div
                     style={{
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      color: c.text,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      flex: 1,
+                      padding: "8px 12px",
+                      display: "flex",
+                      gap: "6px",
+                      alignItems: "center",
                     }}
                   >
-                    {getTitle(conv)}
-                  </span>
-                  <span style={{ fontSize: "11px", color: c.sub }}>
-                    {formatDate(conv.updatedAt)} ·{" "}
-                    {conv.messages?.filter((m) => m.role === "user").length ||
-                      0}{" "}
-                    perguntas
-                  </span>
-                </button>
-                <button
-                  onClick={(e) => handleDelete(e, conv)}
-                  title="Excluir"
-                  style={{
-                    backgroundColor: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "8px 12px",
-                    color: "#ff4455",
-                    fontSize: "16px",
-                    flexShrink: 0,
-                  }}
-                >
-                  🗑
-                </button>
+                    <input
+                      autoFocus
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle(conv.id);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: isDark ? "#071a14" : "#f0faf7",
+                        border: `1px solid #00e5ff`,
+                        borderRadius: "6px",
+                        padding: "5px 8px",
+                        fontSize: "13px",
+                        color: c.text,
+                        outline: "none",
+                      }}
+                    />
+                    <button
+                      onClick={() => handleSaveTitle(conv.id)}
+                      style={{
+                        background: "#00e5ff",
+                        border: "none",
+                        borderRadius: "5px",
+                        padding: "4px 8px",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        color: "#071a14",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${c.border}`,
+                        borderRadius: "5px",
+                        padding: "4px 8px",
+                        fontSize: "12px",
+                        color: c.sub,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        onSelect(conv);
+                        onClose();
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "12px 16px",
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: "600",
+                          color: c.text,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {getTitle(conv)}
+                      </span>
+                      <span style={{ fontSize: "11px", color: c.sub }}>
+                        {formatDate(conv.updatedAt)} ·{" "}
+                        {conv.messages?.filter((m) => m.role === "user")
+                          .length || 0}{" "}
+                        perguntas
+                      </span>
+                    </button>
+                    {/* ✅ Lápis para editar título */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTitle(getTitle(conv));
+                        setEditingId(conv.id);
+                      }}
+                      title="Editar título"
+                      style={{
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "8px 6px",
+                        color: isDark ? "#3d6b5e" : "#7aada0",
+                        fontSize: "14px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, conv)}
+                      title="Excluir"
+                      style={{
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "8px 12px",
+                        color: "#ff4455",
+                        fontSize: "16px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      🗑
+                    </button>
+                  </>
+                )}
               </div>
             ))
           )}

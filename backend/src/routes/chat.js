@@ -3,20 +3,14 @@ import auth from "../middleware/auth.js"
 import { validateChat } from "../middleware/sanitize.js"
 import { chatStream, extractMemoryFacts } from "../services/ollama.js"
 import { transcribeAudio } from "../services/whisper.js"
-import { saveMessage, getHistory, clearHistory, getKnowledgeChunks, getMemoryAsText, saveMemory } from "../services/database.js"
+import { saveMessage, getKnowledgeChunks, getMemoryAsText, saveMemory, getMemory, getHistory, clearHistory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
-
-// ✅ ADICIONADO: Função para escapar caracteres especiais em regex
-const escapeRegex = (str) => {
-  if (!str || typeof str !== 'string') return ''
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
 
 const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey } = req.body
+    const { message, image, audio, audioMime, modelKey, history: frontendHistory } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -29,12 +23,8 @@ router.post("/", auth, validateChat, async (req, res) => {
         res.setHeader("Content-Type", "text/event-stream")
         res.setHeader("Cache-Control", "no-cache")
         res.flushHeaders()
-        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}
-
-`)
-        res.write(`data: ${JSON.stringify({ done: true })}
-
-`)
+        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}\n\n`)
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
         res.end()
         return
       }
@@ -50,26 +40,30 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Base de Conhecimento
-    let usingKnowledge = false
+    // Base de Conhecimento (RAG)
     if (!image) {
       const allChunks = getKnowledgeChunks(userId)
       if (allChunks.length > 0) {
-        usingKnowledge = true
         const query = finalMessage || "resuma"
         const texts = allChunks.map(c => c.text)
-        // ✅ CORRIGIDO: query segura para regex (não altera o conteúdo, apenas protege)
         const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
         finalMessage = `${query}\n\n<context>${relevant}</context>`
       }
     }
 
-    // Memoria persistente
+    // Memoria persistente do usuario
     const memory = getMemoryAsText(userId)
 
     if (finalMessage) saveMessage(userId, "user", message || "[Audio enviado]")
 
-    const dbHistory = getHistory(userId, 10)
+    // ✅ Usa o history do frontend (zerado em nova conversa)
+    // ✅ Sanitiza: garante que cada item tem role e content string
+    //    Descarta mensagens com content que não seja string (ex: arrays com imagem)
+    const sessionHistory = Array.isArray(frontendHistory)
+      ? frontendHistory
+          .filter(m => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
+          .map(m => ({ role: m.role, content: m.content }))
+      : []
 
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
@@ -78,7 +72,7 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     let fullResponse = ""
 
-    for await (const token of chatStream(finalMessage, dbHistory, image || null, modelKey || "auto", memory)) {
+    for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory)) {
       fullResponse += token
       res.write(`data: ${JSON.stringify({ token })}\n\n`)
     }
@@ -87,7 +81,7 @@ router.post("/", auth, validateChat, async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}\n\n`)
     res.end()
 
-    // Extrai fatos da conversa em background (nao bloqueia a resposta)
+    // Extrai fatos da conversa em background
     if (message && fullResponse && !image) {
       extractMemoryFacts(message, fullResponse).then(facts => {
         for (const fact of facts) {
@@ -125,7 +119,6 @@ router.post("/memory", auth, async (req, res) => {
 // Ver memorias salvas
 router.get("/memory", auth, (req, res) => {
   try {
-    const { getMemory } = require("../services/database.js")
     const memories = getMemory(req.user.id)
     res.json({ memories })
   } catch (error) {

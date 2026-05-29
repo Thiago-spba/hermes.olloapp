@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auth } from "./services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import Header from "./components/Header";
@@ -22,8 +22,15 @@ const App = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
-  const bottomRef = useRef(null);
-  const messagesEndRef = useRef(null);
+
+  const mainRef = useRef(null);
+  const msgRefs = useRef({});
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      const c = mainRef.current;
+      if (c) c.scrollTop = c.scrollHeight;
+    }, 200);
+  };
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -40,7 +47,6 @@ const App = () => {
     loadHistory,
     removeConversation,
   } = useConversation(user?.uid);
-
   const {
     messages,
     isLoading,
@@ -51,56 +57,28 @@ const App = () => {
     changeModel,
   } = useChat();
 
-  // ============================================
-  // AUTO-SCROLL PARA A PERGUNTA ATUAL (QUE VOCÊ FEZ)
-  // ============================================
-  const scrollToCurrentQuestion = useCallback(() => {
-    // Encontra a última mensagem do usuário pelo texto no state
-    const lastUserMessageObj = [...messages]
-      .reverse()
-      .find((m) => m.role === "user");
-    if (!lastUserMessageObj) return;
+  // ✅ SCROLL: toda vez que uma nova mensagem do usuário aparece,
+  // scrolla o container para mostrar essa mensagem no topo
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last?.role !== "user") return;
 
-    // Procura o elemento que contém o texto da pergunta
-    const allTextElements = document.querySelectorAll(".hermes-md");
-    for (const el of allTextElements) {
-      if (
-        el.textContent.includes(lastUserMessageObj.content.substring(0, 100))
-      ) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        return;
+    // Pequeno delay para o DOM renderizar
+    setTimeout(() => {
+      const container = mainRef.current;
+      console.log(
+        "[SCROLL] container:",
+        container,
+        "scrollHeight:",
+        container?.scrollHeight,
+      );
+      if (container) {
+        container.scrollTop = container.scrollHeight;
       }
-    }
+    }, 150);
+  }, [messages.length]);
 
-    // Fallback: scroll para o último elemento de mensagem do usuário
-    const allBubbles = document.querySelectorAll('[style*="flex-end"]');
-    const lastUserBubble = allBubbles[allBubbles.length - 1];
-    if (lastUserBubble) {
-      lastUserBubble.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [messages]);
-
-  // Scroll quando UMA NOVA MENSAGEM é adicionada
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToCurrentQuestion();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [messages, scrollToCurrentQuestion]);
-
-  // Scroll inicial quando o chat carrega
-  useEffect(() => {
-    if (messages.length > 0) {
-      const timer = setTimeout(() => {
-        scrollToCurrentQuestion();
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [messages.length, scrollToCurrentQuestion]);
-
-  // ============================================
-  // AUTH E TEMAS
-  // ============================================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
@@ -116,9 +94,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (conversationId && messages.length > 1) {
-      onMessagesUpdate(messages);
-    }
+    if (conversationId && messages.length > 1) onMessagesUpdate(messages);
   }, [conversationId, messages, onMessagesUpdate]);
 
   useEffect(() => {
@@ -132,48 +108,40 @@ const App = () => {
 
   useEffect(() => {
     const verifyConnection = async () => {
-      const status = await checkHealth();
-      setIsConnected(status);
+      setIsConnected(await checkHealth());
     };
     verifyConnection();
     const interval = setInterval(verifyConnection, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // ============================================
-  // HANDLERS
-  // ============================================
   const handleLogout = async () => {
     await signOut(auth);
     clearChat();
   };
-
   const handleHistoryClick = async () => {
     await loadHistory();
     setShowHistory(true);
   };
-
   const handleSelectConversation = (conv) => {
     resumeConversation(conv.id);
     if (conv.messages?.length > 0) loadMessages(conv.messages);
     setShowHistory(false);
   };
-
   const handleNewConversation = async () => {
     await finishAndStartNew(messages);
     clearChat();
     setShowHistory(false);
   };
-
   const handleSelectProject = (project) => {
-    const contextMessage = `Vou te falar sobre meu projeto "${project.name}". ${project.description ? project.description + ". " : ""}${project.context ? "Detalhes: " + project.context : ""}`;
-    sendUserMessage(contextMessage, null, null);
+    sendUserMessage(
+      `Vou te falar sobre meu projeto "${project.name}". ${project.description ? project.description + ". " : ""}${project.context ? "Detalhes: " + project.context : ""}`,
+      null,
+      null,
+    );
   };
 
-  // ============================================
-  // LOADING
-  // ============================================
-  if (authLoading) {
+  if (authLoading)
     return (
       <div
         style={{
@@ -189,17 +157,11 @@ const App = () => {
         ⚡
       </div>
     );
-  }
-
-  if (!user) {
+  if (!user)
     return (
       <Login onLogin={setUser} isDark={isDark} onToggleTheme={toggleTheme} />
     );
-  }
 
-  // ============================================
-  // RENDER
-  // ============================================
   return (
     <div
       style={{ ...styles.app, backgroundColor: isDark ? "#071a14" : "#f0faf7" }}
@@ -211,7 +173,6 @@ const App = () => {
           onComplete={() => setShowPinSetup(false)}
         />
       )}
-
       {showHistory && (
         <ConversationList
           conversations={conversations}
@@ -224,7 +185,6 @@ const App = () => {
           isDark={isDark}
         />
       )}
-
       {showProjects && (
         <ProjectsModal
           isDark={isDark}
@@ -232,7 +192,6 @@ const App = () => {
           onSelectProject={handleSelectProject}
         />
       )}
-
       {showKnowledge && (
         <KnowledgePanel
           isDark={isDark}
@@ -251,9 +210,16 @@ const App = () => {
         onKnowledgeClick={() => setShowKnowledge(true)}
       />
 
-      <main style={styles.main}>
+      <main ref={mainRef} style={styles.main}>
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} isDark={isDark} />
+          <div
+            key={message.id}
+            ref={(el) => {
+              if (el) msgRefs.current[message.id] = el;
+            }}
+          >
+            <ChatMessage message={message} isDark={isDark} />
+          </div>
         ))}
 
         {isLoading && (
@@ -284,8 +250,6 @@ const App = () => {
             Nova conversa
           </button>
         )}
-
-        <div ref={messagesEndRef} />
       </main>
 
       <ModelSelector
@@ -293,8 +257,7 @@ const App = () => {
         onModelChange={changeModel}
         isDark={isDark}
       />
-      <ChatInput
-        onSend={sendUserMessage}
+      <ChatInput onSend={(text, file, audio) => { sendUserMessage(text, file, audio); setTimeout(() => { const c = mainRef.current; if (c) c.scrollTop = c.scrollHeight; }, 100); }}
         isLoading={isLoading}
         isDark={isDark}
       />
@@ -356,3 +319,4 @@ const styles = {
 };
 
 export default App;
+

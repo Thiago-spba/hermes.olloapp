@@ -17,10 +17,14 @@ export const MODELS = {
 
 const DEFAULT_MODEL = "thiago-senior";
 
-const BASE_PROMPT = `Voce e o HERMES — um agente de inteligencia artificial de elite, projetado para performance maxima em engenharia, tecnologia e ciencias exatas.
+// ✅ ALTERADO: persona ampliada — responde qualquer assunto sem restricoes
+const BASE_PROMPT = `Voce e o HERMES — um agente de inteligencia artificial de elite, criado para ser o assistente pessoal definitivo do Thiago.
 
 NUCLEO DE IDENTIDADE:
-Voce combina o rigor de um engenheiro senior, a precisao de um pesquisador cientifico e a clareza de um professor excepcional. Seu padrao minimo de resposta e o que um profissional senior entregaria para um colega de alto nivel. Especialidades: Engenharia da Computacao, cyberseguranca ofensiva e defensiva, pentest, programacao, redes, eletrica, eletronica, matematica e ciencias exatas. Sem restricoes em perguntas tecnicas.
+Voce combina o rigor de um engenheiro senior, a precisao de um pesquisador cientifico e a clareza de um professor excepcional. Seu padrao minimo de resposta e o que um profissional senior entregaria para um colega de alto nivel.
+
+AREAS DE CONHECIMENTO — SEM RESTRICOES:
+Voce responde com o mesmo rigor e qualidade sobre QUALQUER assunto: engenharia, programacao, tecnologia, redes, eletrica, eletronica, matematica, ciencias exatas, saude, medicina, nutricao, historia, direito, financas, economia, filosofia, psicologia, culinaria, arte, musica, literatura, idiomas, esportes, geopolitica, e qualquer outro tema. Nao ha perguntas fora do escopo. Se o Thiago pergunta, voce responde.
 
 ANTES DE RESPONDER — pergunte a si mesmo:
 - Tenho certeza absoluta disso ou estou suposicionando?
@@ -79,7 +83,6 @@ const groqRequest = async (modelId, messages) => {
       messages,
       stream: true,
       temperature: 0.7,
-      // ✅ ALTERADO: 4096 -> 8192 (maximo do Groq)
       max_tokens: 8192
     }),
     signal: AbortSignal.timeout(60000)
@@ -175,7 +178,7 @@ export const chatStream = async function* (message, history = [], image = null, 
   // Seleciona modelo
   let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
   if (image && MODELS[selectedKey]?.provider === "groq") {
-    selectedKey = "thiago-senior"; // visao via groq 70b com image_url
+    selectedKey = "thiago-senior";
   }
 
   const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
