@@ -4,36 +4,38 @@ import FilePreview from "./FilePreview";
 import AudioRecorder from "./AudioRecorder";
 import AudioPreview from "./AudioPreview";
 
+// ✅ ECG animado ocupando toda a largura do campo
 const Heartbeat = ({ isDark }) => {
-  const points = "0,20 6,20 9,5 12,35 15,20 18,20 21,12 24,28 27,20 60,20";
+  const color = isDark ? "#00e5ff" : "#00c896";
   return (
-    <svg
-      width="60"
-      height="40"
-      viewBox="0 0 60 40"
-      style={{ display: "block" }}
-    >
-      <polyline
-        points={points}
-        fill="none"
-        stroke={isDark ? "#00e5ff" : "#00c896"}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{
-          strokeDasharray: 120,
-          strokeDashoffset: 120,
-          animation: "heartbeat 1.2s ease-in-out infinite",
-        }}
-      />
+    <div style={{ flex: 1, height: "40px", overflow: "hidden" }}>
       <style>{`
-        @keyframes heartbeat {
-          0% { stroke-dashoffset: 120; opacity: 0.3; }
-          50% { stroke-dashoffset: 0; opacity: 1; }
-          100% { stroke-dashoffset: -120; opacity: 0.3; }
+        @keyframes ecgScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
         }
       `}</style>
-    </svg>
+      <svg
+        viewBox="0 0 600 40"
+        preserveAspectRatio="none"
+        style={{
+          width: "200%",
+          height: "100%",
+          animation: "ecgScroll 1.8s linear infinite",
+          display: "block",
+        }}
+      >
+        <polyline
+          points="0,20 30,20 45,20 55,4 65,36 75,10 85,20 100,20 130,20 145,20 155,4 165,36 175,10 185,20 200,20 230,20 245,20 255,4 265,36 275,10 285,20 300,20 330,20 345,20 355,4 365,36 375,10 385,20 400,20 430,20 445,20 455,4 465,36 475,10 485,20 500,20 530,20 545,20 555,4 565,36 575,10 585,20 600,20"
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+        />
+      </svg>
+    </div>
   );
 };
 
@@ -52,9 +54,8 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
   const [gridOn, setGridOn] = useState(false);
 
   const startCamera = useCallback(async (facing) => {
-    if (streamRef.current) {
+    if (streamRef.current)
       streamRef.current.getTracks().forEach((t) => t.stop());
-    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -79,8 +80,9 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
     navigator.mediaDevices
       .enumerateDevices()
       .then((devices) => {
-        const videoDevices = devices.filter((d) => d.kind === "videoinput");
-        setHasMultipleCameras(videoDevices.length > 1);
+        setHasMultipleCameras(
+          devices.filter((d) => d.kind === "videoinput").length > 1,
+        );
       })
       .catch(() => {});
     startCamera(facingMode);
@@ -121,8 +123,7 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
     ctx.drawImage(video, 0, 0);
     setFlash(true);
     setTimeout(() => setFlash(false), 200);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
-    setPreview(dataUrl);
+    setPreview(canvas.toDataURL("image/jpeg", 0.92));
   };
 
   const handleConfirm = () => {
@@ -135,16 +136,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
       data: preview,
     });
     onClose();
-  };
-
-  const handleRetake = () => setPreview(null);
-
-  const c = {
-    bg: isDark ? "#071a14" : "#f0faf7",
-    panel: isDark ? "#0d2e1f" : "#ffffff",
-    border: isDark ? "#143d2e" : "#b0ddd4",
-    text: isDark ? "#e0f5f0" : "#071a14",
-    btn: isDark ? "#0a2218" : "#e0f5ef",
   };
 
   return (
@@ -160,7 +151,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
         justifyContent: "center",
       }}
     >
-      {/* Flash */}
       {flash && (
         <div
           style={{
@@ -172,8 +162,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           }}
         />
       )}
-
-      {/* Header */}
       <div
         style={{
           width: "100%",
@@ -233,8 +221,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           ⊞
         </button>
       </div>
-
-      {/* Viewfinder */}
       <div
         style={{
           position: "relative",
@@ -288,7 +274,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
                 transform: facingMode === "user" ? "scaleX(-1)" : "none",
               }}
             />
-            {/* Grid */}
             {gridOn && (
               <svg
                 style={{
@@ -333,7 +318,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
                 />
               </svg>
             )}
-            {/* Cantos do viewfinder */}
             {["tl", "tr", "bl", "br"].map((pos) => (
               <div
                 key={pos}
@@ -357,8 +341,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           </>
         )}
       </div>
-
-      {/* Zoom slider — só quando não é preview */}
       {!preview && !error && (
         <div
           style={{
@@ -402,8 +384,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           </span>
         </div>
       )}
-
-      {/* Controles */}
       <div
         style={{
           width: "100%",
@@ -417,7 +397,7 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
         {preview ? (
           <>
             <button
-              onClick={handleRetake}
+              onClick={() => setPreview(null)}
               style={{
                 background: "rgba(255,255,255,0.1)",
                 border: "none",
@@ -448,7 +428,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           </>
         ) : (
           <>
-            {/* Lanterna */}
             <button
               onClick={toggleTorch}
               style={{
@@ -468,8 +447,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
             >
               🔦
             </button>
-
-            {/* Botão capturar */}
             <button
               onClick={handleCapture}
               style={{
@@ -488,8 +465,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
               }
               onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
             />
-
-            {/* Virar câmera */}
             {hasMultipleCameras && (
               <button
                 onClick={toggleCamera}
@@ -513,7 +488,6 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
           </>
         )}
       </div>
-
       <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
@@ -554,12 +528,10 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   };
-
   const handleChange = (e) => {
     setText(e.target.value);
     adjustHeight(e.target);
   };
-
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -577,25 +549,16 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
-  const handleAudioReady = (audio) => {
-    setAttachedAudio(audio);
-    setAttachedFile(null);
-  };
-  const handleFileSelect = (file) => {
-    setAttachedFile(file);
-    setAttachedAudio(null);
-  };
-  const handleCameraCapture = (file) => {
-    setAttachedFile(file);
-    setAttachedAudio(null);
-  };
   const hasContent = text.trim() || attachedFile || attachedAudio;
 
   return (
     <>
       {showCamera && (
         <CameraModal
-          onCapture={handleCameraCapture}
+          onCapture={(f) => {
+            setAttachedFile(f);
+            setAttachedAudio(null);
+          }}
           onClose={() => setShowCamera(false)}
           isDark={isDark}
         />
@@ -692,17 +655,21 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
           }}
         >
           <FileAttachment
-            onFileSelect={handleFileSelect}
+            onFileSelect={(f) => {
+              setAttachedFile(f);
+              setAttachedAudio(null);
+            }}
             isDark={isDark}
             disabled={isLoading || !!attachedAudio}
           />
           <AudioRecorder
-            onAudioReady={handleAudioReady}
+            onAudioReady={(a) => {
+              setAttachedAudio(a);
+              setAttachedFile(null);
+            }}
             isDark={isDark}
             disabled={isLoading || !!attachedFile}
           />
-
-          {/* Botão câmera */}
           <button
             onClick={() => setShowCamera(true)}
             disabled={isLoading || !!attachedFile || !!attachedAudio}
@@ -729,16 +696,7 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
           </button>
 
           {isLoading ? (
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                paddingLeft: "4px",
-              }}
-            >
-              <Heartbeat isDark={isDark} />
-            </div>
+            <Heartbeat isDark={isDark} />
           ) : (
             <textarea
               ref={textareaRef}

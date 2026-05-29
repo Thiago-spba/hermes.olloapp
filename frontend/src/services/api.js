@@ -34,6 +34,8 @@ export const sendMessage = async (message, history = [], image = null, onToken =
     headers,
     body: JSON.stringify({
       message: message || "",
+      // ✅ ADICIONADO: envia o history da sessão atual para o backend
+      history: history || [],
       image: image || null,
       audio: audio || null,
       audioMime: audioMime || null,
@@ -102,6 +104,7 @@ export const MODELS = {
   "thiago-especialista": { name: "🔬 Thiago Especialista", provider: "anthropic", free: false },
   "thiago-supremo":      { name: "👑 Thiago Supremo",      provider: "anthropic", free: false },
 }
+
 // --- BASE DE CONHECIMENTO ---
 export const uploadKnowledge = async (files) => {
   const headers = await authHeaders(false)
@@ -150,7 +153,6 @@ export const clearKnowledge = async () => {
   return response.json()
 }
 
-
 export const getKnowledgeContent = async (id) => {
   const headers = await authHeaders(false)
   const response = await fetch(`${API_URL}/api/knowledge/${id}/content`, { method: 'GET', headers })
@@ -167,3 +169,4 @@ export const updateKnowledge = async (id, title, content) => {
   if (!response.ok) throw new Error('Erro ao atualizar')
   return response.json()
 }
+// cache-bust: 1780058001

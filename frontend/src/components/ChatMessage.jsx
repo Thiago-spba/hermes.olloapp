@@ -29,34 +29,79 @@ const MD_STYLES = `
   .hermes-md .katex { font-size: 1em; }
 `;
 
-const ThinkingDots = ({ isDark }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-      padding: "4px 2px",
-    }}
-  >
-    {[0, 1, 2].map((i) => (
-      <div
-        key={i}
-        style={{
-          width: "10px",
-          height: "10px",
-          borderRadius: "50%",
-          backgroundColor: "#00e5aa",
-          animation: "hermesThink 1.2s ease-in-out infinite",
-          animationDelay: `${i * 0.2}s`,
-        }}
-      />
-    ))}
+// ✅ ECG animado ocupando toda a largura da bolha
+const ECGLine = () => (
+  <div style={{ width: "100%", height: "48px", overflow: "hidden" }}>
     <style>{`
-      @keyframes hermesThink {
-        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-        40% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 8px #00e5aa; }
+      @keyframes ecgScroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
       }
     `}</style>
+    <svg
+      viewBox="0 0 600 48"
+      preserveAspectRatio="none"
+      style={{
+        width: "200%",
+        height: "100%",
+        animation: "ecgScroll 1.8s linear infinite",
+        display: "block",
+      }}
+    >
+      <polyline
+        points="
+          0,24
+          30,24
+          45,24
+          55,4
+          65,44
+          75,10
+          85,24
+          100,24
+          130,24
+          145,24
+          155,4
+          165,44
+          175,10
+          185,24
+          200,24
+          230,24
+          245,24
+          255,4
+          265,44
+          275,10
+          285,24
+          300,24
+          330,24
+          345,24
+          355,4
+          365,44
+          375,10
+          385,24
+          400,24
+          430,24
+          445,24
+          455,4
+          465,44
+          475,10
+          485,24
+          500,24
+          530,24
+          545,24
+          555,4
+          565,44
+          575,10
+          585,24
+          600,24
+        "
+        fill="none"
+        stroke="#00e5aa"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: "drop-shadow(0 0 4px #00e5aa)" }}
+      />
+    </svg>
   </div>
 );
 
@@ -140,10 +185,12 @@ const ChatMessage = memo(({ message, isDark }) => {
                 ? "#143d2e"
                 : "#b0ddd4",
           borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
+          // ✅ largura maior quando pensando para o ECG ter espaço
+          minWidth: isThinking ? "220px" : undefined,
         }}
       >
         {isThinking ? (
-          <ThinkingDots isDark={isDark} />
+          <ECGLine />
         ) : (
           <>
             <div

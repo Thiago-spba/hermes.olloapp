@@ -1,20 +1,11 @@
-// ============================================
-// HERMES AI — Middleware de Sanitização
-// Limpa e valida inputs antes de processar
-// Analogia: detector de metais na entrada —
-// remove objetos perigosos antes de deixar passar
-// ============================================
-
 import { body, validationResult } from 'express-validator';
 
-// Regras de validação para a rota /api/chat
 export const validateChat = [
   body('message')
     .optional()
     .isString()
     .withMessage('Mensagem deve ser texto.')
     .trim()
-    // Limite aumentado para 50000 caracteres (~25 paginas)
     .isLength({ max: 50000 })
     .withMessage('Mensagem muito longa. Maximo: 50000 caracteres.')
     .escape(),
@@ -29,12 +20,10 @@ export const validateChat = [
     .isIn(['user', 'assistant'])
     .withMessage('Role invalido no historico.'),
 
+  // ✅ CORRIGIDO: content pode ser string OU array (mensagens com imagem)
+  // A filtragem para string é feita no chat.js antes de enviar para a IA
   body('history.*.content')
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ max: 50000 })
-    .withMessage('Conteudo do historico muito longo.'),
+    .optional(),
 
   body('image')
     .optional()
@@ -56,7 +45,6 @@ export const validateChat = [
     .isString()
     .withMessage('ModelKey deve ser texto.'),
 
-  // Middleware que verifica se houve erros de validacao
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -69,7 +57,6 @@ export const validateChat = [
   }
 ];
 
-// Regras de validacao para a rota /api/auth/login
 export const validateLogin = [
   body('username')
     .isString()
