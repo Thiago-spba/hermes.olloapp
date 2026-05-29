@@ -1,136 +1,268 @@
-# 🏛️ Hermes AI — Agente de Inteligência Artificial
+# 🏛️ HERMES AI AGENT
 
-> **"Não há problema sem solução. Apresente o seu."**
+> *"Não há problema sem solução. Apresente o seu."*
 
-![Deploy Firebase](https://img.shields.io/badge/Deploy-Firebase_Hosting-orange?style=for-the-badge&logo=firebase)
-![Oracle Cloud](https://img.shields.io/badge/Backend-Oracle_Cloud_ARM-red?style=for-the-badge&logo=oracle)
-![Ollama Local](https://img.shields.io/badge/IA-Ollama_Local-blueviolet?style=for-the-badge&logo=ollama)
-![Status Online](https://img.shields.io/badge/Status-Online-green?style=for-the-badge)
+
+🔗 **[hermes.olloapp.com.br](https://hermes.olloapp.com.br)**
 
 ---
 
-## ⚡ Visão Geral
+## ⚡ O que é o Hermes?
 
-O **Hermes AI** é um ecossistema de inteligência artificial soberano. Diferente de soluções comerciais, o Hermes roda 100% em infraestrutura privada, garantindo que seus dados nunca saiam do seu controle. Ele utiliza modelos de última geração para processar texto, visão computacional e documentos complexos — sem custos por mensagem e sem dependência de APIs externas.
+O **Hermes AI Agent** é um assistente de inteligência artificial pessoal **100% self-hosted**, desenvolvido do zero por Thiago Fernando. Roda integralmente no **Oracle Cloud Free Tier** — sem custo de infraestrutura — e integra múltiplos modelos de IA de ponta via API, com streaming de respostas em tempo real.
 
-🔗 **Acesse agora:** [hermes.olloapp.com.br](https://hermes.olloapp.com.br)
+**Diferencial:** privacidade total, sem limites artificiais, com 5 modelos de IA intercambiáveis em tempo real.
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## 🏗️ Arquitetura
 
 ```
-PWA Frontend (React 19)
-        │
-        ├──── Firebase (Auth + Hosting)
-        │
-        └──── Backend Node.js (Oracle Cloud)
-                    │
-                    ├──── Firebase Admin SDK (Verificação JWT)
-                    │
-                    └──── Ollama Engine (Inferência Local)
-                                │
-                                ├──── dolphin-llama3:8b  (Texto)
-                                └──── llama3.2-vision:11b (Visão)
+┌─────────────────────────────────────────────────────────┐
+│                    USUÁRIO (Browser/PWA)                │
+└───────────────────────┬─────────────────────────────────┘
+                        │ HTTPS
+┌───────────────────────▼─────────────────────────────────┐
+│              Firebase Hosting (Frontend)                │
+│              hermes.olloapp.com.br                      │
+└───────────────────────┬─────────────────────────────────┘
+                        │ HTTPS / SSE Streaming
+┌───────────────────────▼─────────────────────────────────┐
+│         Nginx (Proxy Reverso + SSL)                     │
+│         Oracle Cloud ARM A1 — 147.15.84.45              │
+└───────────────────────┬─────────────────────────────────┘
+                        │ :3001
+┌───────────────────────▼─────────────────────────────────┐
+│         Node.js + Express 5 (Backend API)               │
+│         PM2 — Gerenciamento de Processos 24/7           │
+└──────┬──────────────┬─────────────────┬─────────────────┘
+       │              │                 │
+       ▼              ▼                 ▼
+  Groq API      Anthropic API     Firebase Admin
+  (5 modelos)   (Claude)          (Auth JWT)
+       │
+       ▼
+  SQLite Local
+  (histórico, memória, base de conhecimento)
 ```
 
 ---
 
-## 🛠️ Stack Tecnológica
+## 🛠️ Stack Tecnológica Completa
 
-| Camada         | Tecnologia          | Propósito                                      |
-| -------------- | ------------------- | ---------------------------------------------- |
-| Frontend       | React 19 + Vite 8   | Interface ultra-veloz e PWA instalável         |
-| Infraestrutura | Oracle Cloud ARM    | VPS Ampere A1 — 4 OCPUs / 24GB RAM (Free)      |
-| Backend        | Node.js + Express 5 | API robusta com gestão de processos via PM2    |
-| Segurança      | Firebase Admin SDK  | Validação de identidade via tokens JWT         |
-| IA (Texto)     | dolphin-llama3:8b   | Respostas técnicas, sem censura, alta precisão |
-| IA (Visão)     | llama3.2-vision:11b | Análise de imagens, prints e diagramas         |
-| Banco de Dados | Firestore + SQLite  | Histórico na nuvem + logs locais               |
-
----
-
-## 🚀 Funcionalidades de Elite
-
-### 🧠 Inteligência Multimodal
-
-- **Texto:** Respostas técnicas e precisas com `dolphin-llama3:8b`
-- **Visão:** Envie prints, fotos ou diagramas para análise com `llama3.2-vision:11b`
-- **Documentos:** Leitura nativa de PDF, TXT e código-fonte
-
-### 🛡️ Segurança e Privacidade
-
-- **Autenticação Firebase:** Tokens JWT validados em tempo real a cada requisição
-- **Isolamento de Dados:** Cada usuário possui silo exclusivo no Firestore
-- **CORS Blindado:** Backend configurado para rejeitar qualquer acesso não autorizado
-
-### 📱 Experiência do Usuário
-
-- **Dark/Light Mode:** Transição suave com persistência de preferência
-- **Máquina de Escrever:** Respostas com efeito de digitação fluida
-- **Histórico Inteligente:** Descarta conversas vazias e organiza por data
-- **Offline Ready:** PWA instalável com Service Worker
+| Camada | Tecnologia | Versão | Função |
+|--------|-----------|--------|--------|
+| Frontend | React + Vite | 19 / 8 | PWA — Interface responsiva dark/light |
+| Hosting | Firebase Hosting | Spark | CDN global, deploy automático |
+| DNS | GoDaddy CNAME | — | hermes.olloapp.com.br |
+| Runtime | Node.js | v20.20.2 | Backend ESM (type: module) |
+| Framework | Express | 5 | API REST + SSE Streaming |
+| Processo | PM2 | — | Gerenciador 24/7 com auto-restart |
+| Proxy | Nginx | — | HTTPS, SSL, proxy reverso |
+| Servidor | Oracle Cloud ARM A1 | Free Tier | 4 OCPUs / 24GB RAM |
+| IA Texto | Groq llama-3.3-70b | — | Thiago Sênior — respostas rápidas |
+| IA Fallback | Groq llama-3.1-8b | — | Thiago Jr — fallback automático 429/503/413 |
+| IA Visão | Groq llama-4-scout-17b | — | Análise de imagens (autodetecção) |
+| IA Premium | Claude Haiku 4.5 | — | Thiago Doutor — padrão do sistema |
+| IA Premium | Claude Sonnet 4.6 | — | Thiago Especialista |
+| IA Premium | Claude Opus 4.7 | — | Thiago Supremo — protegido por senha |
+| Áudio | Groq Whisper large-v3-turbo | — | Transcrição de áudio WAV |
+| Banco | SQLite (better-sqlite3) | — | Local — 5 tabelas persistentes |
+| Auth | Firebase Auth + Admin SDK | — | Google + Email/Password — JWT verificado |
 
 ---
 
-## 📂 Estrutura do Projeto
+## 🚀 Funcionalidades
+
+### 🤖 Inteligência Artificial
+- **5 modelos intercambiáveis** em tempo real via seletor no rodapé
+- **Streaming SSE** — respostas token a token, sem espera
+- **Fallback automático** — troca de modelo ao atingir limite (429/503/413)
+- **Análise de imagens** — detecção automática usa modelo multimodal
+- **Transcrição de áudio** — gravação WAV → Groq Whisper → texto
+
+### 🧠 Memória e Contexto
+- **Memória automática** — extrai fatos da conversa em background
+- **Comando `/lembrar`** — salva informações manualmente (`/lembrar nome: Thiago`)
+- **Base de Conhecimento** — PDFs, TXTs e textos digitados persistentes por usuário
+- **RAG (Retrieval Augmented Generation)** — busca chunks relevantes antes de responder
+- **Edição de textos** — itens de texto na base podem ser editados ou excluídos
+- **Histórico de conversas** — salvo por usuário com navegação
+
+### 📷 Entrada Multimodal
+- **Câmera integrada** — viewfinder com grade, zoom 1-3x, lanterna, câmera frontal/traseira
+- **Ctrl+V** — cola imagens diretamente do clipboard
+- **Drag & Drop** — arrasta arquivos para o chat
+- **Upload de arquivos** — PDF, TXT, imagens, código (até 50MB)
+
+### 🔐 Segurança
+- **Firebase Auth** — token JWT verificado em cada requisição
+- **CORS blindado** — GET, POST, PUT, DELETE apenas para origens autorizadas
+- **Sanitização de inputs** — `express-validator` valida todos os campos
+- **Rate limiting** — 100 req/15min global, 20 req/15min no chat
+- **Helmet.js** — headers de segurança HTTP
+- **Isolamento por usuário** — cada conta tem dados 100% separados
+- **Senha para modelo Supremo** — Claude Opus protegido por senha
+
+### 🎨 Interface
+- **Dark/Light mode** — com persistência de preferência
+- **Markdown completo** — negrito, listas, tabelas, código, blockquote
+- **LaTeX/KaTeX** — equações matemáticas renderizadas
+- **Monitor cardíaco animado** — indicador visual durante processamento
+- **Indicador de modelo** — tag mostra qual IA respondeu cada mensagem
+- **Controle de voz** — seletor de voz, velocidade 0.7x-2.0x, TTS
+- **Zoom de texto** — P / M / G / GG
+- **Wake Lock** — mantém tela ativa no celular
+
+---
+
+## 📂 Estrutura de Arquivos
 
 ```
 hermes-ai-agent/
-├── 🌐 frontend/
-│   ├── src/
-│   │   ├── components/      # UI: Header, Login, Chat, History
-│   │   ├── hooks/           # Lógica: useChat, useConversation
-│   │   └── services/        # Integração: Firebase, API Axios
-│   └── public/              # PWA Manifest & Service Workers
+├── backend/
+│   ├── index.js                      # Ponto de entrada
+│   ├── hermes.sqlite                 # Banco de dados local
+│   ├── firebase-adminsdk.json        # ⚠️ NÃO commitar
+│   ├── .env                          # ⚠️ NÃO commitar
+│   └── src/
+│       ├── app.js                    # Express, middlewares, rotas
+│       ├── routes/
+│       │   ├── chat.js               # SSE, /lembrar, RAG, memória
+│       │   └── auth.js               # JWT legado
+│       ├── middleware/
+│       │   ├── auth.js               # Verifica Firebase token
+│       │   ├── cors.js               # Origens permitidas
+│       │   └── sanitize.js           # Validação de inputs
+│       └── services/
+│           ├── ollama.js             # Groq + Anthropic, 5 modelos, fallback
+│           ├── whisper.js            # Transcrição de áudio
+│           ├── database.js           # SQLite — 5 tabelas, CRUD completo
+│           └── pdfService.js         # pdf-parse, chunking, RAG
 │
-└── ⚙️ backend/
-    ├── index.js             # Servidor Principal (Express 5 + CORS)
-    ├── firebase-adminsdk.json
-    └── hermes.sqlite        # Logs locais de estabilidade
+└── frontend/
+    └── src/
+        ├── App.jsx                   # Raiz — tema, auth, layout
+        ├── hooks/
+        │   ├── useChat.js            # Estado da conversa, streaming
+        │   └── useConversation.js    # Histórico, sessões
+        ├── services/
+        │   ├── api.js                # HTTP, SSE, knowledge CRUD
+        │   └── firebase.js           # Auth config
+        └── components/
+            ├── ChatInput.jsx         # Input, câmera, áudio, Ctrl+V
+            ├── ChatMessage.jsx       # Markdown, KaTeX, TTS, modelo
+            ├── Header.jsx            # Menu, voz, fonte, wake lock
+            ├── ModelSelector.jsx     # Seletor 5 modelos + senha Supremo
+            ├── KnowledgePanel.jsx    # Base de conhecimento + edição
+            ├── Login.jsx             # Auth Firebase
+            └── ConversationList.jsx  # Histórico de conversas
 ```
 
 ---
 
-## 🔧 Deploy
+## 🗄️ Banco de Dados (SQLite)
 
-### Frontend (Firebase Hosting)
+| Tabela | Função |
+|--------|--------|
+| `conversations` | Histórico de mensagens por usuário |
+| `sessions` | Controle de sessões ativas |
+| `pdf_context` | Contexto legado (compatibilidade) |
+| `user_memory` | Fatos extraídos automaticamente das conversas |
+| `knowledge_base` | Base de conhecimento — PDFs, TXTs e textos por usuário |
 
-```bash
-cd frontend
-npm run build
-firebase deploy --only hosting
-```
+---
 
-### Backend (Oracle Cloud via SSH)
+## ⚙️ Variáveis de Ambiente (.env)
 
-```bash
-# Envio do arquivo atualizado
-scp ./index.js ubuntu@147.15.84.45:/home/ubuntu/hermes/backend/
-
-# Reinício seguro
-pm2 restart hermes && pm2 save
-```
-
-### Verificar saúde da API
-
-```bash
-curl https://api.hermes.olloapp.com.br/api/health
-# Esperado: {"status":"ok","engine":"Hermes Prime"}
+```env
+PORT=3001
+NODE_ENV=production
+GROQ_API_KEY=gsk_...
+ANTHROPIC_API_KEY=sk-ant-...
+JWT_SECRET=...
+CORS_ORIGIN=https://hermes.olloapp.com.br
+DB_PATH=./hermes.sqlite
+UPLOADS_PATH=./uploads
 ```
 
 ---
 
-## 📈 Próximos Passos
+## 🔧 Comandos Essenciais
 
-- [ ] **Whisper V3** — Transcrição de áudio com precisão humana (PT-BR)
-- [ ] **Piper TTS** — Respostas por voz sintetizada localmente
-- [ ] **Rate Limiting** — Proteção contra sobrecarga de requisições no backend
+### SSH
+```bash
+ssh -i C:\Users\Home\Downloads\ssh-key-2026-04-23.key ubuntu@147.15.84.45
+```
+
+### Backend (servidor)
+```bash
+pm2 status                          # Ver processos
+pm2 restart hermes                  # Reiniciar
+pm2 logs --lines 20 --nostream      # Ver logs
+pm2 logs --lines 20 --nostream | grep -i error   # Filtrar erros
+pm2 save                            # Salvar configuração
+curl -s http://localhost:3001/api/health          # Testar API
+```
+
+### Enviar arquivo para servidor
+```bash
+scp -i C:\Users\Home\Downloads\ssh-key-2026-04-23.key \
+  C:\hermes-ai-agent\backend\src\services\ollama.js \
+  ubuntu@147.15.84.45:~/hermes/backend/src/services/ollama.js
+```
+
+### Deploy frontend
+```bash
+cd C:\hermes-ai-agent\frontend
+npm run build && firebase deploy
+```
+
+### Git
+```bash
+cd C:\hermes-ai-agent
+git add . && git commit -m "mensagem"
+```
+
+---
+
+## 📊 Limites das APIs Gratuitas
+
+| Modelo | Tokens/dia | Reset |
+|--------|-----------|-------|
+| Groq llama-3.3-70b (Sênior) | 100.000 | 21h Brasília |
+| Groq llama-3.1-8b (Jr — fallback) | 500.000 | 21h Brasília |
+| Groq llama-4-scout (Visão) | 100.000 | 21h Brasília |
+| Whisper large-v3-turbo | 28.800 seg/dia | 21h Brasília |
+| Claude Haiku/Sonnet/Opus | Sem limite diário | Pago por uso |
+
+> ⚠️ PDF de 50 páginas consome ~20.000-50.000 tokens. Fallback automático ativo para erros 429/503/413.
+
+---
+
+## 🔐 Segurança — Boas Práticas
+
+- ✅ `.env` e `firebase-adminsdk.json` no `.gitignore` — nunca commitados
+- ✅ Repositório **privado** no GitHub
+- ✅ JWT verificado em toda requisição via Firebase Admin SDK
+- ✅ Sanitização de inputs com `express-validator`
+- ✅ Rate limiting: 100 req/15min global, 20 req/15min no chat
+- ✅ CORS restrito às origens autorizadas
+- ✅ Helmet.js — headers HTTP de segurança
+- ✅ Isolamento total por usuário (userId em todas as queries)
+- ✅ Modelo Supremo protegido por senha
+
+> ⚠️ **NUNCA** compartilhe o IP do servidor, chaves de API ou o `firebase-adminsdk.json` publicamente.
 
 ---
 
 ## 👨‍💻 Autor
 
 **Thiago Fernando**
-Engenheiro de Computação & Desenvolvedor Front-End
-[github.com/Thiago-spba](https://github.com/Thiago-spba) · [portfolio-thiagosp.vercel.app](https://portfolio-thiagosp.vercel.app)
+Engenheiro da Computação & Desenvolvedor Front-End
+Especialista em PWAs, Firebase, React e infraestrutura cloud
+
+
+---
+
+*Hermes AI Agent — Desenvolvido com dedicação. Infraestrutura privada, dados sob seu controle.*
