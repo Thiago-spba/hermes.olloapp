@@ -291,6 +291,7 @@ const App = () => {
 
   useEffect(() => {
     if (!userId) return;
+    if (isLoading) return;
     if (messages.length > 0 && messages.some(m => m.role === "user")) {
       if (!conversationId) {
         startNewConversation().then(() => onMessagesUpdate(messages));
@@ -298,7 +299,7 @@ const App = () => {
         onMessagesUpdate(messages);
       }
     }
-  }, [messages, conversationId, onMessagesUpdate, startNewConversation, userId]);
+  }, [messages, isLoading, conversationId, onMessagesUpdate, startNewConversation, userId]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -665,6 +666,7 @@ styleSheet.textContent = `
 document.head.appendChild(styleSheet);
 
 export default App;
+
 
 
 
