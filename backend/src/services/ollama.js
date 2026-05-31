@@ -301,7 +301,7 @@ export const chatStream = async function* (message, history = [], image = null, 
 
   // Limita historico para modelos com menor contexto
   const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
-    ? history.filter(m => m.content).slice(-4)
+    ? history.filter(m => m.content).slice(-20)
     : history.filter(m => m.content);
 
   const messages = [
@@ -338,7 +338,6 @@ export const chatStream = async function* (message, history = [], image = null, 
     try {
       yield* anthropicStream(model.id, messages, systemPrompt);
     } catch (err) {
-      console.log(`[Hermes] ${model.id} falhou — fallback para Mistral: ${err.message}`);
       yield `_(Thiago Doutor indisponivel — usando Thiago Jr como fallback)_\n\n`;
       yield* mistralStream("mistral-small-latest", messages);
     }
