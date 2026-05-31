@@ -20,12 +20,12 @@ export const saveMessages = async (userId, conversationId, messages) => {
   await setDoc(ref, {
     messages: messages.map(m => ({ role: m.role, content: m.content, time: m.time })),
     updatedAt: serverTimestamp(),
-  })
+  }, { merge: true })
 }
 
 export const finishConversation = async (userId, conversationId, title) => {
   const ref = doc(db, 'conversations', userId, 'chats', conversationId)
-  await setDoc(ref, { title, finished: true, updatedAt: serverTimestamp() })
+  await setDoc(ref, { title, finished: true, updatedAt: serverTimestamp() }, { merge: true })
 }
 
 export const deleteConversation = async (userId, conversationId) => {
@@ -40,7 +40,8 @@ export const getConversations = async (userId) => {
     limit(50)
   )
   const snapshot = await getDocs(q)
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+  const conversations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+  return conversations
 }
 
 export const getConversation = async (userId, conversationId) => {
@@ -48,4 +49,3 @@ export const getConversation = async (userId, conversationId) => {
   const found = snapshot.docs.find(d => d.id === conversationId)
   return found ? { id: found.id, ...found.data() } : null
 }
-
