@@ -35,9 +35,9 @@ export const sendMessage = async (message, history = [], image = null, onToken =
     body: JSON.stringify({
       message: message || "",
       history: history || [],
-      image: image || null,
-      audio: audio || null,
-      audioMime: audioMime || null,
+      ...(image && { image }),
+      ...(audio && { audio }),
+      ...(audioMime && { audioMime }),
       modelKey,
       studyMode: studyMode || false,
     }),

@@ -22,7 +22,7 @@ const Header = ({
   const [rate, setRate] = useState(() =>
     parseFloat(localStorage.getItem("hermes-rate") || "1.1"),
   );
-  const [fontSize, setFontSize] = useState(() => 15);
+  const [fontSize, setFontSize] = useState(() => parseInt(localStorage.getItem("hermes-fontsize") || "15"));
   const wakeLockRef = useRef(null);
   const loadedRef = useRef(false);
 
@@ -32,10 +32,11 @@ const Header = ({
   }, [rate]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--font-size-base",
-      `${fontSize}px`,
-    );
+    document.documentElement.style.setProperty("--font-size-base", `${fontSize}px`);
+    const scale = fontSize / 15;
+    const root = document.getElementById("hermes-root");
+    if (root) root.style.zoom = scale;
+    
     localStorage.setItem("hermes-fontsize", fontSize);
   }, [fontSize]);
 
@@ -63,6 +64,7 @@ const Header = ({
     window.speechSynthesis.onvoiceschanged = load;
     setTimeout(load, 500);
     setTimeout(load, 1500);
+    setTimeout(load, 3000);
   }, []);
 
   const handleVoiceSelect = (voice) => {
@@ -111,9 +113,9 @@ const Header = ({
 
   const fontSizes = [
     { label: "P", value: 13 },
-    { label: "M", value: 15 },
-    { label: "G", value: 17 },
-    { label: "GG", value: 19 },
+    { label: "M", value: 16 },
+    { label: "G", value: 20 },
+    { label: "GG", value: 24 },
   ];
   const speedOptions = [
     { label: "0.7x", value: 0.7 },
@@ -934,4 +936,11 @@ const Header = ({
 };
 
 export default Header;
+
+
+
+
+
+
+
 

@@ -13,6 +13,7 @@ const MODELS_LABEL = {
 };
 
 const MD_STYLES = `
+  .hermes-md { font-size: inherit; }
   .hermes-md p { margin: 0 0 6px 0; }
   .hermes-md ul, .hermes-md ol { padding-left: 20px; margin: 4px 0 8px 0; }
   .hermes-md li { margin-bottom: 4px; }
@@ -336,3 +337,4 @@ const styles = {
 };
 
 export default ChatMessage;
+

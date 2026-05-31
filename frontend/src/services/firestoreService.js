@@ -49,3 +49,4 @@ export const getConversation = async (userId, conversationId) => {
   const found = snapshot.docs.find(d => d.id === conversationId)
   return found ? { id: found.id, ...found.data() } : null
 }
+
