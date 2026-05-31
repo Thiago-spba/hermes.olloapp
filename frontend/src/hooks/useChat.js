@@ -11,7 +11,8 @@ const WELCOME_MESSAGE = {
   time: getTime(),
 };
 
-const useChat = () => {
+// ✅ ALTERADO: aceita studyMode como parâmetro
+const useChat = (studyMode = false) => {
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -108,7 +109,8 @@ const useChat = () => {
         },
         audioBase64,
         audioMime,
-        selectedModel
+        selectedModel,
+        studyMode // ✅ ADICIONADO
       );
 
       setHistory((prev) => [
@@ -124,7 +126,7 @@ const useChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [history, selectedModel]);
+  }, [history, selectedModel, studyMode]); // ✅ ADICIONADO studyMode na dependência
 
   const clearChat = useCallback(() => {
     setMessages([WELCOME_MESSAGE]);

@@ -9,6 +9,8 @@ const Header = ({
   onHistoryClick,
   onProjectsClick,
   onKnowledgeClick,
+  studyMode, // ✅ ADICIONADO
+  onToggleStudyMode, // ✅ ADICIONADO
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [voices, setVoices] = useState([]);
@@ -16,12 +18,11 @@ const Header = ({
   const [showVoices, setShowVoices] = useState(false);
   const [wakeLock, setWakeLock] = useState(false);
   const [activeSection, setActiveSection] = useState(null);
+  const [showStudyCard, setShowStudyCard] = useState(false); // ✅ ADICIONADO
   const [rate, setRate] = useState(() =>
     parseFloat(localStorage.getItem("hermes-rate") || "1.1"),
   );
-  const [fontSize, setFontSize] = useState(() =>
-    parseFloat(localStorage.getItem("hermes-fontsize") || "15"),
-  );
+  const [fontSize, setFontSize] = useState(() => 15);
   const wakeLockRef = useRef(null);
   const loadedRef = useRef(false);
 
@@ -177,6 +178,121 @@ const Header = ({
             backdropFilter: "blur(2px)",
           }}
         />
+      )}
+
+      {/* ✅ ADICIONADO: Card de confirmação Modo Estudo */}
+      {showStudyCard && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 600,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: isDark ? "#0d2e1f" : "#ffffff",
+              border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+              borderRadius: "16px",
+              padding: "28px 24px",
+              width: "300px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <div style={{ fontSize: "40px", marginBottom: "8px" }}>💡</div>
+              <div
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "700",
+                  color: isDark ? "#e0f5f0" : "#071a14",
+                  marginBottom: "8px",
+                }}
+              >
+                {studyMode ? "Desativar Modo Estudo?" : "Ativar Modo Estudo?"}
+              </div>
+              {!studyMode && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: isDark ? "#7aada0" : "#2a6b5a",
+                    lineHeight: 1.6,
+                    textAlign: "left",
+                    backgroundColor: isDark ? "#071a14" : "#f0faf7",
+                    borderRadius: "10px",
+                    padding: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      marginBottom: "6px",
+                      fontWeight: "600",
+                      color: isDark ? "#00e5aa" : "#007a55",
+                    }}
+                  >
+                    Como funciona:
+                  </div>
+                  <div>
+                    📖 <strong>Conceito</strong> — explicação clara e direta
+                  </div>
+                  <div>
+                    💡 <strong>Exemplo</strong> — caso prático do mundo real
+                  </div>
+                  <div>
+                    ✏️ <strong>Exercício</strong> — questão para fixar o
+                    conteúdo
+                  </div>
+                  <div
+                    style={{ marginTop: "8px", opacity: 0.7, fontSize: "11px" }}
+                  >
+                    Ideal para estudar qualquer matéria com profundidade.
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+              <button
+                onClick={() => setShowStudyCard(false)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: "transparent",
+                  border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+                  color: isDark ? "#7aada0" : "#2a6b5a",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onToggleStudyMode(!studyMode);
+                  setShowStudyCard(false);
+                  setMenuOpen(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: "8px",
+                  backgroundColor: studyMode ? "#ff4455" : "#00e5aa",
+                  border: "none",
+                  color: "#071a14",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                {studyMode ? "Desativar" : "Ativar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <header
@@ -430,6 +546,62 @@ const Header = ({
                     </button>
                   ))}
                 </div>
+
+                {/* ✅ ADICIONADO: Modo Estudo — antes do tamanho de fonte */}
+                <button
+                  onClick={() => setShowStudyCard(true)}
+                  className="hermes-menu-item"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: studyMode
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: studyMode
+                      ? isDark
+                        ? "#00e5aa"
+                        : "#007a55"
+                      : c.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>💡</span>
+                    <span>Modo Estudo</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: studyMode
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: studyMode ? "#00e5aa" : c.sub,
+                      border: studyMode ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {studyMode ? "ON" : "OFF"}
+                  </span>
+                </button>
 
                 {/* Tamanho de fonte */}
                 <div
@@ -762,3 +934,4 @@ const Header = ({
 };
 
 export default Header;
+

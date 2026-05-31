@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey, history: frontendHistory } = req.body
+    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -51,14 +51,10 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Memoria persistente do usuario
     const memory = getMemoryAsText(userId)
 
     if (finalMessage) saveMessage(userId, "user", message || "[Audio enviado]")
 
-    // ✅ Usa o history do frontend (zerado em nova conversa)
-    // ✅ Sanitiza: garante que cada item tem role e content string
-    //    Descarta mensagens com content que não seja string (ex: arrays com imagem)
     const sessionHistory = Array.isArray(frontendHistory)
       ? frontendHistory
           .filter(m => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
@@ -72,7 +68,8 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     let fullResponse = ""
 
-    for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory)) {
+    // ✅ studyMode passado para o chatStream
+    for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory, studyMode || false)) {
       fullResponse += token
       res.write(`data: ${JSON.stringify({ token })}\n\n`)
     }
@@ -81,7 +78,6 @@ router.post("/", auth, validateChat, async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}\n\n`)
     res.end()
 
-    // Extrai fatos da conversa em background
     if (message && fullResponse && !image) {
       extractMemoryFacts(message, fullResponse).then(facts => {
         for (const fact of facts) {
@@ -104,7 +100,6 @@ router.post("/", auth, validateChat, async (req, res) => {
   }
 })
 
-// Salvar memoria manualmente
 router.post("/memory", auth, async (req, res) => {
   try {
     const { key, value } = req.body
@@ -116,7 +111,6 @@ router.post("/memory", auth, async (req, res) => {
   }
 })
 
-// Ver memorias salvas
 router.get("/memory", auth, (req, res) => {
   try {
     const memories = getMemory(req.user.id)
