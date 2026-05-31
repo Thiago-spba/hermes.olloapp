@@ -66,7 +66,13 @@ const useChat = (studyMode = false) => {
         if (file.type.startsWith("image/")) {
           imageBase64 = file.data;
         } else if (file.type === "application/pdf") {
-          const result = await uploadKnowledge([file.fileObj || new File([await fetch(file.data).then(r=>r.blob())], file.name, {type: file.type})]);
+          const base64 = file.data.includes(",") ? file.data.split(",")[1] : file.data;
+          const byteChars = atob(base64);
+          const byteArr = new Uint8Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+          const blob = new Blob([byteArr], { type: "application/pdf" });
+          const pdfFile = new File([blob], file.name, { type: "application/pdf" });
+          const result = await uploadKnowledge([pdfFile]);
           const aiId = Date.now() + 2;
           setMessages((prev) => prev.filter((m) => m.id !== thinkingId).concat({
             id: aiId, role: "assistant", content: "", time: getTime(),
@@ -137,3 +143,5 @@ const useChat = (studyMode = false) => {
 };
 
 export default useChat;
+
+
