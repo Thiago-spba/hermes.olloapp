@@ -83,8 +83,13 @@ const useConversation = (userId) => {
   // ✅ Salva mensagens
   const onMessagesUpdate = useCallback(async (messages) => {
     if (!userId) return
-    const id = conversationIdRef.current
-    if (!id) return
+    let id = conversationIdRef.current
+    if (!id) {
+      id = await createConversation(userId)
+      setConversationId(id)
+      conversationIdRef.current = id
+      localStorage.setItem('hermes-conv-id', id)
+    }
     currentMessages.current = messages
     await saveMessages(userId, id, messages)
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
@@ -152,3 +157,5 @@ const useConversation = (userId) => {
 }
 
 export default useConversation
+
+

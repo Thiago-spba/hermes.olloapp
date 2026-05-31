@@ -203,7 +203,9 @@ const App = () => {
     resumeSavedConversation,
     loadHistory,
     removeConversation,
+    startNewConversation,
   } = useConversation(user?.uid);
+  const userId = user?.uid;
 
   const {
     messages,
@@ -288,10 +290,15 @@ const App = () => {
   }, [user, resumeSavedConversation, loadMessages]);
 
   useEffect(() => {
-    if (conversationId && messages.length > 0) {
-      onMessagesUpdate(messages);
+    if (!userId) return;
+    if (messages.length > 0 && messages.some(m => m.role === "user")) {
+      if (!conversationId) {
+        startNewConversation().then(() => onMessagesUpdate(messages));
+      } else {
+        onMessagesUpdate(messages);
+      }
     }
-  }, [conversationId, messages, onMessagesUpdate]);
+  }, [messages, conversationId, onMessagesUpdate, startNewConversation, userId]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -658,3 +665,6 @@ styleSheet.textContent = `
 document.head.appendChild(styleSheet);
 
 export default App;
+
+
+

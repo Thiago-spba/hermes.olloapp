@@ -1,10 +1,35 @@
 import { useState, useEffect, useRef } from "react";
-import { auth, googleProvider } from "../services/firebase";
+import { auth, googleProvider, db } from "../services/firebase";
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+// Função para salvar usuário no Firestore
+const saveUserToFirestore = async (user, isNewUser = false) => {
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const userData = {
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || user.email?.split("@")[0] || "Usuário",
+      photoURL: user.photoURL || null,
+      lastLoginAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    if (isNewUser) {
+      userData.createdAt = serverTimestamp();
+    }
+
+    await setDoc(userRef, userData, { merge: true });
+    console.log("✅ Usuário salvo no Firestore:", user.email);
+  } catch (error) {
+    console.error("Erro ao salvar usuário:", error);
+  }
+};
 
 const Login = ({ onLogin, isDark, onToggleTheme }) => {
   const [isFirstAccess, setIsFirstAccess] = useState(false);
@@ -62,6 +87,7 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
+      await saveUserToFirestore(result.user, true);
       onLogin(result.user);
     } catch (err) {
       if (err.code !== "auth/popup-closed-by-user") {
@@ -84,10 +110,25 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
     }
     setIsLoading(true);
     try {
-      const result = isFirstAccess
-        ? await createUserWithEmailAndPassword(auth, email.trim(), password)
-        : await signInWithEmailAndPassword(auth, email.trim(), password);
-      onLogin(result.user);
+      let user;
+      if (isFirstAccess) {
+        const result = await createUserWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password,
+        );
+        user = result.user;
+        await saveUserToFirestore(user, true);
+      } else {
+        const result = await signInWithEmailAndPassword(
+          auth,
+          email.trim(),
+          password,
+        );
+        user = result.user;
+        await saveUserToFirestore(user, false);
+      }
+      onLogin(user);
     } catch (err) {
       const msgs = {
         "auth/user-not-found": "Usuario nao encontrado.",
@@ -186,7 +227,6 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
             : "0 0 40px rgba(0,153,187,0.08), 0 8px 32px rgba(0,0,0,0.12)",
         }}
       >
-        {/* Logo */}
         <div
           style={{
             display: "flex",
@@ -234,7 +274,6 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
           </p>
         </div>
 
-        {/* Toggle */}
         <div
           style={{
             display: "flex",
@@ -273,7 +312,6 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
           })}
         </div>
 
-        {/* Google */}
         <button
           onClick={handleGoogleLogin}
           disabled={isLoading}
@@ -303,14 +341,12 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
           Entrar com Google
         </button>
 
-        {/* Divisor */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ flex: 1, height: "1px", backgroundColor: c.divider }} />
           <span style={{ fontSize: "11px", color: c.dividerText }}>ou</span>
           <div style={{ flex: 1, height: "1px", backgroundColor: c.divider }} />
         </div>
 
-        {/* E-mail */}
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           <label
             style={{
@@ -334,7 +370,6 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
           />
         </div>
 
-        {/* Senha */}
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
           <label
             style={{
