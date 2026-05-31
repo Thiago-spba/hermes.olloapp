@@ -223,8 +223,9 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
         cleanLine = cleanLine.slice(6);
       }
       
-      // Pula linhas vazias ou marcador de fim
+      // Pula linhas vazias, marcador de fim e linhas "event:"
       if (!cleanLine.trim() || cleanLine === "[DONE]") continue;
+      if (cleanLine.startsWith("event:")) continue;
       
       try {
         const json = JSON.parse(cleanLine);
