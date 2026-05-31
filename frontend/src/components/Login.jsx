@@ -433,4 +433,3 @@ const Login = ({ onLogin, isDark, onToggleTheme }) => {
 };
 
 export default Login;
-

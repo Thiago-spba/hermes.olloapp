@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { auth } from "./services/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import Header from "./components/Header";
@@ -15,12 +15,36 @@ import useConversation from "./hooks/useConversation";
 import { checkHealth } from "./services/api";
 
 // ============ COMPONENTE DE BOAS-VINDAS ============
-const WelcomeScreen = ({ onSend, isDark, suggestions, selectedModel }) => {
+const WelcomeScreen = ({ isDark }) => {
+  const [greeting, setGreeting] = useState("");
   const [typedText, setTypedText] = useState("");
-  const fullText = "Não há problema sem solução. Apresente o seu?";
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+  const [fadePhrase, setFadePhrase] = useState(true);
+
+  const rotatingPhrases = [
+    { icon: "💻", text: "O código é poesia" },
+    { icon: "📚", text: "Aprender é evoluir" },
+    { icon: "🎙️", text: "Pergunte sem medo" },
+    { icon: "📎", text: "Arraste arquivos aqui" },
+    { icon: "🧠", text: "Modo Estudo transforma respostas" },
+    { icon: "🔍", text: "Analiso imagens e documentos" },
+    { icon: "⚡", text: "Respostas em tempo real" },
+    { icon: "🎓", text: "Thiago Doutor disponível" },
+  ];
 
   useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setGreeting("Bom dia");
+    else if (hour >= 12 && hour < 18) setGreeting("Boa tarde");
+    else if (hour >= 18 && hour < 24) setGreeting("Boa noite");
+    else setGreeting("Boa madrugada");
+  }, []);
+
+  useEffect(() => {
+    if (!greeting) return;
+    const fullText = `${greeting}! Como posso ajudar você hoje?`;
     let i = 0;
+    setTypedText("");
     const timer = setInterval(() => {
       if (i <= fullText.length) {
         setTypedText(fullText.slice(0, i));
@@ -28,91 +52,82 @@ const WelcomeScreen = ({ onSend, isDark, suggestions, selectedModel }) => {
       } else {
         clearInterval(timer);
       }
-    }, 50);
+    }, 60);
     return () => clearInterval(timer);
+  }, [greeting]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFadePhrase(false);
+      setTimeout(() => {
+        setCurrentPhraseIndex((prev) => (prev + 1) % rotatingPhrases.length);
+        setFadePhrase(true);
+      }, 300);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const currentPhrase = `${rotatingPhrases[currentPhraseIndex].icon} "${rotatingPhrases[currentPhraseIndex].text}"`;
 
   return (
     <div style={styles.welcomeContainer}>
       <div style={styles.welcomeContent}>
-        <div style={styles.welcomeIcon}>
-          <span style={styles.iconMain}>🤖</span>
-          <span style={styles.iconSpark}>⚡</span>
+        <div style={styles.codeAnimation}>
+          <span
+            style={{
+              ...styles.codeChar,
+              animation: "floatSoft 2.5s ease-in-out infinite",
+              animationDelay: "0s",
+            }}
+          >
+            &lt;
+          </span>
+          <span
+            style={{
+              ...styles.codeChar,
+              animation: "floatSoft 2.5s ease-in-out infinite",
+              animationDelay: "0.4s",
+            }}
+          >
+            /
+          </span>
+          <span
+            style={{
+              ...styles.codeChar,
+              animation: "floatSoft 2.5s ease-in-out infinite",
+              animationDelay: "0.8s",
+            }}
+          >
+            &gt;
+          </span>
         </div>
 
-        <h1 style={styles.welcomeTitle}>
-          HERMES
-          <span style={styles.welcomeBadge}>AI Agent</span>
-        </h1>
-
-        <p
-          style={{
-            ...styles.welcomeSubtitle,
-            color: isDark ? "#a0c0b8" : "#2a6b5a",
-          }}
-        >
-          {typedText}
-          <span style={styles.cursor}>|</span>
-        </p>
-
-        <div
-          style={{
-            ...styles.modelStatus,
-            backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
-            borderColor: isDark ? "#143d2e" : "#b0ddd4",
-          }}
-        >
-          <span style={styles.modelStatusDot}></span>
-          <span>Modelo ativo: {selectedModel}</span>
+        <div style={styles.greetingContainer}>
+          <p
+            style={{
+              ...styles.greetingText,
+              color: isDark ? "#e0e0e0" : "#1a1a1a",
+            }}
+          >
+            {typedText}
+            <span style={styles.cursor}>|</span>
+          </p>
         </div>
 
-        <div style={styles.suggestionsGrid}>
-          {suggestions.map((suggestion, idx) => (
-            <button
-              key={idx}
-              onClick={() => onSend(suggestion.text)}
-              style={{
-                ...styles.suggestionButton,
-                backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
-                borderColor: isDark ? "#143d2e" : "#b0ddd4",
-                color: isDark ? "#00e5aa" : "#007a55",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = "translateY(-2px)";
-                e.target.style.backgroundColor = isDark ? "#143d2e" : "#c8eae2";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = "translateY(0)";
-                e.target.style.backgroundColor = isDark ? "#0d2e1f" : "#e0f5ef";
-              }}
-            >
-              <span style={styles.suggestionIcon}>{suggestion.icon}</span>
-              <span>{suggestion.text}</span>
-            </button>
-          ))}
-        </div>
-
-        <div
-          style={{
-            ...styles.tipsContainer,
-            color: isDark ? "#5a8a7a" : "#9ac0b5",
-          }}
-        >
-          <div style={styles.tip}>
-            <kbd style={styles.kbd}>Enter</kbd>
-            <span>Enviar mensagem</span>
-          </div>
-          <div style={styles.tip}>
-            <kbd style={styles.kbd}>Shift + Enter</kbd>
-            <span>Nova linha</span>
-          </div>
-          <div style={styles.tip}>
-            <kbd style={styles.kbd}>📎</kbd>
-            <span>Enviar arquivo</span>
-          </div>
-          <div style={styles.tip}>
-            <kbd style={styles.kbd}>🎤</kbd>
-            <span>Entrada de voz</span>
+        <div style={styles.rotatingContainer}>
+          <div
+            style={{
+              ...styles.rotatingText,
+              backgroundColor: isDark
+                ? "rgba(0, 229, 255, 0.08)"
+                : "rgba(0, 114, 86, 0.06)",
+              color: isDark ? "#00e5aa" : "#007a55",
+              opacity: fadePhrase ? 1 : 0,
+              transform: fadePhrase ? "translateY(0)" : "translateY(5px)",
+              transition: "opacity 0.3s ease, transform 0.3s ease",
+            }}
+          >
+            {currentPhrase}
           </div>
         </div>
       </div>
@@ -121,16 +136,39 @@ const WelcomeScreen = ({ onSend, isDark, suggestions, selectedModel }) => {
 };
 
 // ============ COMPONENTE DE CARREGAMENTO ============
-const LoadingScreen = ({ isDark }) => (
+const LoadingScreen = () => (
   <div style={styles.loadingContainer}>
     <div style={styles.loadingContent}>
-      <div style={styles.loadingIcon}>⚡</div>
-      <div style={styles.loadingText}>Inicializando HERMES...</div>
-      <div style={styles.loadingDots}>
-        <span style={styles.loadingDot}></span>
-        <span style={styles.loadingDot}></span>
-        <span style={styles.loadingDot}></span>
+      <div style={styles.codeAnimationLoading}>
+        <span
+          style={{
+            ...styles.codeCharLoading,
+            animation: "floatSoft 2.5s ease-in-out infinite",
+            animationDelay: "0s",
+          }}
+        >
+          &lt;
+        </span>
+        <span
+          style={{
+            ...styles.codeCharLoading,
+            animation: "floatSoft 2.5s ease-in-out infinite",
+            animationDelay: "0.4s",
+          }}
+        >
+          /
+        </span>
+        <span
+          style={{
+            ...styles.codeCharLoading,
+            animation: "floatSoft 2.5s ease-in-out infinite",
+            animationDelay: "0.8s",
+          }}
+        >
+          &gt;
+        </span>
       </div>
+      <div style={styles.loadingText}>Inicializando HERMES...</div>
     </div>
   </div>
 );
@@ -147,16 +185,8 @@ const App = () => {
   const [studyMode, setStudyMode] = useState(false);
 
   const mainRef = useRef(null);
-  const msgRefs = useRef({});
-
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      const container = mainRef.current;
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, 100);
-  }, []);
+  const isUserScrolling = useRef(false);
+  const scrollTimeout = useRef(null);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -185,35 +215,52 @@ const App = () => {
     changeModel,
   } = useChat(studyMode);
 
-  const welcomeSuggestions = useMemo(
-    () => [
-      { icon: "📊", text: "Analisar dados" },
-      { icon: "💻", text: "Debug código" },
-      { icon: "📚", text: "Explicar conceito" },
-      { icon: "🔧", text: "Resolver problema" },
-      { icon: "📝", text: "Revisar documento" },
-      { icon: "🧠", text: "Ativar Modo Estudo" },
-      { icon: "🔒", text: "Segurança da informação" },
-      { icon: "🚀", text: "Otimização de performance" },
-    ],
-    [],
-  );
-
-  // Verifica se mostra tela de boas-vindas (apenas quando só tem a mensagem inicial)
   const showWelcomeScreen =
     !isLoading && messages.filter((m) => m.role === "user").length === 0;
 
+  // ✅ Função de scroll suave para o final
+  const scrollToBottom = useCallback(() => {
+    // Só executa scroll se o usuário não estiver rolando manualmente
+    if (isUserScrolling.current) return;
+
+    setTimeout(() => {
+      const container = mainRef.current;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }, 50);
+  }, []);
+
+  // ✅ Detecta quando o usuário está rolando manualmente
+  const handleUserScroll = useCallback(() => {
+    isUserScrolling.current = true;
+
+    // Limpa timeout anterior
+    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+
+    // Depois de 3 segundos sem scroll, reativa o scroll automático
+    scrollTimeout.current = setTimeout(() => {
+      isUserScrolling.current = false;
+    }, 3000);
+  }, []);
+
+  // ✅ Quando uma nova mensagem de USUÁRIO chega, scroll automático
   useEffect(() => {
-    if (messages.length > 0) {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === "user") {
       scrollToBottom();
     }
   }, [messages.length, scrollToBottom]);
 
+  // ✅ Quando uma nova mensagem do ASSISTENTE começa, scroll automático
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    if (isLoading) {
       scrollToBottom();
     }
-  }, [isLoading, messages.length, scrollToBottom]);
+  }, [isLoading, scrollToBottom]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -304,10 +351,10 @@ const App = () => {
 
   const handleSendMessage = (text, file, audio) => {
     sendUserMessage(text, file, audio);
-    scrollToBottom();
+    // O scroll será acionado pelo useEffect quando a mensagem do usuário chegar
   };
 
-  if (authLoading) return <LoadingScreen isDark={isDark} />;
+  if (authLoading) return <LoadingScreen />;
   if (!user)
     return (
       <Login onLogin={setUser} isDark={isDark} onToggleTheme={toggleTheme} />
@@ -315,7 +362,7 @@ const App = () => {
 
   return (
     <div
-      style={{ ...styles.app, backgroundColor: isDark ? "#071a14" : "#f0faf7" }}
+      style={{ ...styles.app, backgroundColor: isDark ? "#071a14" : "#f5faf8" }}
     >
       {showPinSetup && (
         <PinSetup
@@ -387,24 +434,13 @@ const App = () => {
         </div>
       )}
 
-      <main ref={mainRef} style={styles.main}>
-        {/* CORREÇÃO AQUI: usa showWelcomeScreen em vez de messages.length === 0 */}
+      <main ref={mainRef} style={styles.main} onScroll={handleUserScroll}>
         {showWelcomeScreen ? (
-          <WelcomeScreen
-            onSend={handleSendMessage}
-            isDark={isDark}
-            suggestions={welcomeSuggestions}
-            selectedModel={selectedModel}
-          />
+          <WelcomeScreen isDark={isDark} />
         ) : (
           <>
             {messages.map((message) => (
-              <div
-                key={message.id}
-                ref={(el) => {
-                  if (el) msgRefs.current[message.id] = el;
-                }}
-              >
+              <div key={message.id}>
                 <ChatMessage message={message} isDark={isDark} />
               </div>
             ))}
@@ -452,7 +488,6 @@ const App = () => {
         onModelChange={changeModel}
         isDark={isDark}
       />
-
       <ChatInput
         onSend={handleSendMessage}
         isLoading={isLoading}
@@ -462,21 +497,23 @@ const App = () => {
   );
 };
 
-// ============ ESTILOS ============
+// ============ ESTILOS RESPONSIVOS ============
 const styles = {
   app: {
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
-    maxWidth: "768px",
+    width: "100%",
+    maxWidth: "1200px",
     margin: "0 auto",
     position: "relative",
     transition: "background-color 0.3s ease",
+    boxShadow: "0 0 20px rgba(0,0,0,0.05)",
   },
   main: {
     flex: 1,
     overflowY: "auto",
-    paddingTop: "16px",
+    padding: "16px",
     paddingBottom: "8px",
     WebkitOverflowScrolling: "touch",
   },
@@ -486,119 +523,50 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     minHeight: "calc(100vh - 200px)",
-    animation: "fadeIn 0.6s ease-out",
+    padding: "20px",
   },
   welcomeContent: {
     textAlign: "center",
     maxWidth: "600px",
+    width: "100%",
     margin: "0 auto",
     padding: "20px",
   },
-  welcomeIcon: {
-    position: "relative",
-    display: "inline-block",
-    marginBottom: "24px",
-  },
-  iconMain: {
-    fontSize: "72px",
-    display: "inline-block",
-    animation: "float 3s ease-in-out infinite",
-  },
-  iconSpark: {
-    position: "absolute",
-    fontSize: "24px",
-    right: "-10px",
-    top: "0",
-    animation: "spark 2s ease-in-out infinite",
-  },
-  welcomeTitle: {
-    fontSize: "42px",
+  codeAnimation: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "clamp(8px, 4vw, 16px)",
+    marginBottom: "clamp(32px, 8vw, 48px)",
+    fontSize: "clamp(48px, 10vw, 80px)",
     fontWeight: "bold",
-    marginBottom: "16px",
-    background: "linear-gradient(135deg, #00e5ff, #00ffaa, #00e5ff)",
-    backgroundSize: "200% auto",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    animation: "shimmer 3s linear infinite",
   },
-  welcomeBadge: {
-    fontSize: "14px",
-    background: "rgba(0, 229, 255, 0.2)",
-    padding: "4px 8px",
-    borderRadius: "20px",
-    marginLeft: "12px",
-    WebkitTextFillColor: "initial",
-    color: "#00e5ff",
-  },
-  welcomeSubtitle: {
-    fontSize: "18px",
-    marginBottom: "32px",
+  codeChar: { display: "inline-block", color: "#00e5ff" },
+  greetingContainer: { marginBottom: "clamp(24px, 6vw, 40px)" },
+  greetingText: {
+    fontSize: "clamp(18px, 5vw, 28px)",
+    fontWeight: "500",
     fontFamily: "monospace",
+    wordBreak: "break-word",
   },
   cursor: {
     animation: "blink 1s step-end infinite",
     marginLeft: "2px",
+    fontWeight: "300",
   },
-  modelStatus: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    border: "1px solid",
-    fontSize: "12px",
-    marginBottom: "32px",
-  },
-  modelStatusDot: {
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    backgroundColor: "#00ffaa",
-    animation: "pulse 2s infinite",
-  },
-  suggestionsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-    gap: "12px",
-    marginBottom: "32px",
-  },
-  suggestionButton: {
+  rotatingContainer: {
     display: "flex",
-    alignItems: "center",
     justifyContent: "center",
-    gap: "8px",
-    padding: "10px 16px",
-    border: "1px solid",
-    borderRadius: "12px",
-    fontSize: "13px",
-    cursor: "pointer",
-    transition: "all 0.2s ease",
+    alignItems: "center",
+    marginTop: "clamp(16px, 4vw, 24px)",
+  },
+  rotatingText: {
+    display: "inline-block",
+    padding: "clamp(10px, 3vw, 16px) clamp(16px, 5vw, 24px)",
+    borderRadius: "40px",
+    fontSize: "clamp(13px, 3.5vw, 16px)",
     fontWeight: "500",
-  },
-  suggestionIcon: {
-    fontSize: "16px",
-  },
-  tipsContainer: {
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: "16px",
-    fontSize: "12px",
-    padding: "12px",
-    borderTop: "1px solid rgba(0, 229, 255, 0.2)",
-  },
-  tip: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  kbd: {
-    background: "rgba(0, 229, 255, 0.1)",
-    padding: "2px 6px",
-    borderRadius: "4px",
-    fontFamily: "monospace",
-    fontSize: "11px",
-    border: "1px solid rgba(0, 229, 255, 0.3)",
+    maxWidth: "90%",
+    wordBreak: "break-word",
   },
   loadingContainer: {
     display: "flex",
@@ -607,30 +575,20 @@ const styles = {
     height: "100dvh",
     backgroundColor: "#071a14",
   },
-  loadingContent: {
-    textAlign: "center",
-  },
-  loadingIcon: {
-    fontSize: "48px",
-    animation: "spin 2s linear infinite",
-    marginBottom: "20px",
-  },
-  loadingText: {
-    color: "#00e5ff",
-    fontSize: "18px",
-    marginBottom: "16px",
-  },
-  loadingDots: {
+  loadingContent: { textAlign: "center" },
+  codeAnimationLoading: {
     display: "flex",
     justifyContent: "center",
     gap: "8px",
+    marginBottom: "20px",
+    fontSize: "clamp(36px, 8vw, 56px)",
+    fontWeight: "bold",
   },
-  loadingDot: {
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    backgroundColor: "#00e5ff",
-    animation: "pulse 1.5s infinite",
+  codeCharLoading: { display: "inline-block", color: "#00e5ff" },
+  loadingText: {
+    color: "#00e5ff",
+    fontSize: "clamp(14px, 4vw, 18px)",
+    marginTop: "20px",
   },
   typing: {
     padding: "0 12px 8px",
@@ -673,6 +631,7 @@ const styles = {
     alignItems: "center",
     gap: "8px",
     fontSize: "12px",
+    flexWrap: "wrap",
   },
   studyBannerClose: {
     marginLeft: "auto",
@@ -683,38 +642,18 @@ const styles = {
   },
 };
 
-// ============ ANIMAÇÕES CSS ============
+// ============ ANIMAÇÕES CSS GLOBAIS ============
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  }
-  @keyframes spark {
-    0%, 100% { opacity: 0; transform: scale(0.5); }
-    50% { opacity: 1; transform: scale(1.2); }
-  }
-  @keyframes shimmer {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-  @keyframes pulse {
-    0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); }
-    30% { opacity: 1; transform: scale(1.2); }
-  }
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
+  @keyframes floatSoft { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+  @keyframes pulse { 0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.2); } }
+  @media (max-width: 768px) { .welcome-content { padding: 16px; } }
+  @media (max-width: 480px) { .rotating-text { font-size: 12px; padding: 8px 12px; } }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.3); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 229, 255, 0.5); }
 `;
 document.head.appendChild(styleSheet);
 
