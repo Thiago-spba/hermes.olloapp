@@ -3,21 +3,25 @@ dotenv.config();
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+const COHERE_API_KEY = process.env.COHERE_API_KEY;
+
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
+const COHERE_URL = "https://api.cohere.com/v2/chat";
 
-// Modelos disponiveis
 export const MODELS = {
-  "thiago-jr":          { provider: "groq",      id: "llama-3.1-8b-instant",                  name: "⚡ Thiago Jr" },
-  "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile",               name: "🧠 Thiago Sênior" },
-  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5",                      name: "🎓 Thiago Doutor" },
-  "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",                     name: "🔬 Thiago Especialista" },
-  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",                       name: "👑 Thiago Supremo" },
+  "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
+  "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
+  "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
+  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5",        name: "🎓 Thiago Doutor",       free: false },
+  "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",       name: "🔬 Thiago Especialista", free: false },
+  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",         name: "👑 Thiago Supremo",      free: false },
 };
 
-const DEFAULT_MODEL = "thiago-senior";
+const DEFAULT_MODEL = "thiago-doutor";
 
-// ✅ ALTERADO: persona ampliada — responde qualquer assunto sem restricoes
 const BASE_PROMPT = `Voce e o HERMES — um agente de inteligencia artificial de elite, criado para ser o assistente pessoal definitivo do Thiago.
 
 NUCLEO DE IDENTIDADE:
@@ -65,9 +69,27 @@ FERRAMENTAS:
 REGRA ABSOLUTA:
 Quando a mensagem contiver a secao CONTEUDO, responda EXCLUSIVAMENTE com base nesse conteudo. Nunca alegue nao ter acesso a documentos quando o conteudo estiver presente.`;
 
-const buildSystemPrompt = (memory = null) => {
-  if (!memory) return BASE_PROMPT;
-  return `${BASE_PROMPT}\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}`;
+const STUDY_MODE_PROMPT = `
+
+MODO ESTUDO ATIVO:
+Voce esta em modo de ensino estruturado. Para CADA resposta, independente do assunto, siga OBRIGATORIAMENTE este formato:
+
+📖 CONCEITO
+Explique o conceito de forma clara, direta e precisa. Use linguagem acessivel sem perder rigor tecnico.
+
+💡 EXEMPLO
+Apresente um exemplo pratico e real que ilustre o conceito. Prefira exemplos do cotidiano ou da area tecnica relevante.
+
+✏️ EXERCICIO
+Proponha uma questao ou desafio pratico para o usuario fixar o conteudo. Pode ser uma pergunta reflexiva, um problema para resolver ou uma tarefa pratica.
+
+Este formato e obrigatorio em TODAS as respostas enquanto o modo estudo estiver ativo.`;
+
+const buildSystemPrompt = (memory = null, studyMode = false) => {
+  let prompt = BASE_PROMPT;
+  if (studyMode) prompt += STUDY_MODE_PROMPT;
+  if (memory) prompt += `\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}`;
+  return prompt;
 };
 
 // ============ GROQ ============
@@ -90,23 +112,13 @@ const groqRequest = async (modelId, messages) => {
 };
 
 const groqStream = async function* (modelId, messages) {
-  let response = await groqRequest(modelId, messages);
-
-  // Fallback automatico se 429/503
-  if ((response.status === 429 || response.status === 503 || response.status === 413) && modelId !== "llama-3.1-8b-instant") {
-    console.log(`[Hermes] Rate limit ${response.status} — fallback para Thiago Jr`);
-    response = await groqRequest("llama-3.1-8b-instant", messages);
-    yield `_(usando Thiago Jr — limite atingido)_\n\n`;
-  }
-
+  const response = await groqRequest(modelId, messages);
   if (!response.ok) {
     const err = await response.text();
     throw new Error(`Groq erro ${response.status}: ${err}`);
   }
-
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -118,6 +130,112 @@ const groqStream = async function* (modelId, messages) {
         const token = json.choices?.[0]?.delta?.content;
         if (token) yield token;
       } catch {}
+    }
+  }
+};
+
+// ============ MISTRAL ============
+const mistralStream = async function* (modelId, messages) {
+  const response = await fetch(MISTRAL_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${MISTRAL_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Mistral erro ${response.status}: ${err}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line.replace("data: ", ""));
+        const token = json.choices?.[0]?.delta?.content;
+        if (token) yield token;
+      } catch {}
+    }
+  }
+};
+
+// ============ COHERE (CORRIGIDO) ============
+const cohereStream = async function* (modelId, messages, systemPrompt) {
+  const cohereMessages = messages.filter(m => m.role !== "system").map(m => ({
+    role: m.role,
+    content: typeof m.content === "string" ? m.content : (m.content?.[0]?.text || "")
+  }));
+
+  const response = await fetch(COHERE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${COHERE_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...cohereMessages
+      ],
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Cohere erro ${response.status}: ${err}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      
+      // Remove o prefixo "data: " se existir
+      let cleanLine = line;
+      if (cleanLine.startsWith("data: ")) {
+        cleanLine = cleanLine.slice(6);
+      }
+      
+      // Pula linhas vazias ou marcador de fim
+      if (!cleanLine.trim() || cleanLine === "[DONE]") continue;
+      
+      try {
+        const json = JSON.parse(cleanLine);
+        if (json.type === "content-delta") {
+          const token = json.delta?.message?.content?.text;
+          if (token) yield token;
+        }
+      } catch (e) {
+        // Ignora erros de parse em linhas malformadas
+        console.debug("[Cohere] Parse error:", e.message);
+      }
     }
   }
 };
@@ -153,7 +271,6 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -172,21 +289,24 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
 };
 
 // ============ MAIN ============
-export const chatStream = async function* (message, history = [], image = null, modelKey = "auto", memory = null) {
-  const systemPrompt = buildSystemPrompt(memory);
+export const chatStream = async function* (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) {
+  const systemPrompt = buildSystemPrompt(memory, studyMode);
 
-  // Seleciona modelo
   let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
-  if (image && MODELS[selectedKey]?.provider === "groq") {
+  if (image && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
     selectedKey = "thiago-senior";
   }
 
   const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
 
-  // Monta mensagens
+  // Limita historico para modelos com menor contexto
+  const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
+    ? history.filter(m => m.content).slice(-4)
+    : history.filter(m => m.content);
+
   const messages = [
     { role: "system", content: systemPrompt },
-    ...history.map(m => ({ role: m.role, content: m.content }))
+    ...limitedHistory.map(m => ({ role: m.role, content: m.content }))
   ];
 
   if (image) {
@@ -213,16 +333,27 @@ export const chatStream = async function* (message, history = [], image = null, 
     messages.push({ role: "user", content: message || "Ola" });
   }
 
+  // FALLBACK INTELIGENTE: Anthropic falha → tenta Mistral
   if (model.provider === "anthropic") {
-    yield* anthropicStream(model.id, messages, systemPrompt);
+    try {
+      yield* anthropicStream(model.id, messages, systemPrompt);
+    } catch (err) {
+      console.log(`[Hermes] ${model.id} falhou — fallback para Mistral: ${err.message}`);
+      yield `_(Thiago Doutor indisponivel — usando Thiago Jr como fallback)_\n\n`;
+      yield* mistralStream("mistral-small-latest", messages);
+    }
+  } else if (model.provider === "mistral") {
+    yield* mistralStream(model.id, messages);
+  } else if (model.provider === "cohere") {
+    yield* cohereStream(model.id, messages, systemPrompt);
   } else {
     yield* groqStream(model.id, messages);
   }
 };
 
-export const chat = async (message, history = [], image = null, modelKey = "auto", memory = null) => {
+export const chat = async (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) => {
   let fullResponse = "";
-  for await (const token of chatStream(message, history, image, modelKey, memory)) {
+  for await (const token of chatStream(message, history, image, modelKey, memory, studyMode)) {
     fullResponse += token;
   }
   return fullResponse || "Sem resposta do modelo.";
@@ -230,11 +361,11 @@ export const chat = async (message, history = [], image = null, modelKey = "auto
 
 export const extractMemoryFacts = async (userMessage, assistantResponse) => {
   try {
-    const response = await fetch(GROQ_URL, {
+    const response = await fetch(MISTRAL_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${MISTRAL_API_KEY}` },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "mistral-small-latest",
         messages: [
           { role: "system", content: `Voce e um extrator de fatos. Analise a conversa e extraia APENAS fatos pessoais importantes sobre o usuario. Retorne APENAS JSON valido: [{"key":"nome_do_fato","value":"valor"}]. Se nao houver fatos, retorne [].` },
           { role: "user", content: `Usuario disse: "${userMessage}"\nAssistente respondeu: "${assistantResponse.substring(0, 500)}"` }

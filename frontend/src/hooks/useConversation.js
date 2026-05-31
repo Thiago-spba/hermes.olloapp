@@ -4,6 +4,7 @@ import {
   saveMessages,
   finishConversation,
   getConversations,
+  getConversation,
 } from '../services/firestoreService'
 
 const INACTIVITY_LIMIT = 60 * 60 * 1000
@@ -43,7 +44,7 @@ const useConversation = (userId) => {
     setConversations(prev => prev.filter(c => c.id !== id))
   }, [])
 
-  // ✅ Inicia nova conversa — cria no Firestore imediatamente
+  // ✅ Inicia nova conversa
   const startNewConversation = useCallback(async () => {
     if (!userId) return null
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
@@ -51,10 +52,35 @@ const useConversation = (userId) => {
     setConversationId(id)
     conversationIdRef.current = id
     currentMessages.current = []
+    // ✅ Salva no localStorage para retomar ao recarregar
+    localStorage.setItem('hermes-conv-id', id)
     return id
   }, [userId])
 
-  // ✅ Salva mensagens — usa ref para garantir o ID correto
+  // ✅ Tenta retomar conversa salva ao carregar
+  const resumeSavedConversation = useCallback(async () => {
+    if (!userId) return null
+    const savedId = localStorage.getItem('hermes-conv-id')
+    if (!savedId) return null
+    try {
+      const conv = await getConversation(userId, savedId)
+      if (conv && conv.messages?.length > 0) {
+        setConversationId(savedId)
+        conversationIdRef.current = savedId
+        currentMessages.current = conv.messages // ✅ CARREGA as mensagens da conversa salva
+        return conv
+      } else {
+        // Se a conversa salva não existe mais, remove do localStorage
+        localStorage.removeItem('hermes-conv-id')
+      }
+    } catch (error) {
+      console.error('Erro ao retomar conversa:', error)
+      localStorage.removeItem('hermes-conv-id')
+    }
+    return null
+  }, [userId])
+
+  // ✅ Salva mensagens
   const onMessagesUpdate = useCallback(async (messages) => {
     if (!userId) return
     const id = conversationIdRef.current
@@ -75,21 +101,36 @@ const useConversation = (userId) => {
     if (!userId) return
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
     const id = conversationIdRef.current
-    if (id && messages.some(m => m.role === 'user')) {
+    if (id && messages && messages.some(m => m.role === 'user')) {
       const title = generateTitle(messages)
       await finishConversation(userId, id, title)
     }
+    localStorage.removeItem('hermes-conv-id')
     await startNewConversation()
     await loadHistory()
   }, [userId, startNewConversation, loadHistory])
 
-  const resumeConversation = useCallback((id) => {
+  // ✅ Resgata conversa do histórico
+  const resumeConversation = useCallback(async (id) => {
+    if (!userId || !id) return null
+    
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
-    setConversationId(id)
-    conversationIdRef.current = id
-  }, [])
+    
+    try {
+      const conv = await getConversation(userId, id)
+      if (conv && conv.messages?.length > 0) {
+        setConversationId(id)
+        conversationIdRef.current = id
+        currentMessages.current = conv.messages // ✅ CARREGA as mensagens
+        localStorage.setItem('hermes-conv-id', id)
+        return conv.messages
+      }
+    } catch (error) {
+      console.error('Erro ao resgatar conversa:', error)
+    }
+    return null
+  }, [userId])
 
-  // Inicia conversa ao logar
   const initConversation = useCallback(async () => {
     if (!userId) return
     await startNewConversation()
@@ -102,6 +143,7 @@ const useConversation = (userId) => {
     onMessagesUpdate,
     finishAndStartNew,
     resumeConversation,
+    resumeSavedConversation,
     loadHistory,
     startNewConversation,
     removeConversation,

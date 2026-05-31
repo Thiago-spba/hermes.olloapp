@@ -27,19 +27,19 @@ const authHeaders = async (json = false) => {
   return headers
 }
 
-export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto") => {
+export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false) => {
   const headers = await authHeaders(true)
   const response = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
     headers,
     body: JSON.stringify({
       message: message || "",
-      // ✅ ADICIONADO: envia o history da sessão atual para o backend
       history: history || [],
       image: image || null,
       audio: audio || null,
       audioMime: audioMime || null,
       modelKey,
+      studyMode: studyMode || false,
     }),
   })
 
@@ -97,8 +97,10 @@ export const checkHealth = async () => {
   }
 }
 
+// ✅ Modelos atualizados com Mistral e Cohere
 export const MODELS = {
-  "thiago-jr":           { name: "⚡ Thiago Jr",           provider: "groq",      free: true },
+  "thiago-analiza":      { name: "🔎 Thiago Analiza",      provider: "cohere",    free: true },
+  "thiago-jr":           { name: "⚙️ Thiago Jr",           provider: "mistral",   free: true },
   "thiago-senior":       { name: "🧠 Thiago Sênior",       provider: "groq",      free: true },
   "thiago-doutor":       { name: "🎓 Thiago Doutor",       provider: "anthropic", free: false },
   "thiago-especialista": { name: "🔬 Thiago Especialista", provider: "anthropic", free: false },
@@ -169,4 +171,4 @@ export const updateKnowledge = async (id, title, content) => {
   if (!response.ok) throw new Error('Erro ao atualizar')
   return response.json()
 }
-// cache-bust: 1780058001
+// cache-bust
