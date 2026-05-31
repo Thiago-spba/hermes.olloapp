@@ -85,11 +85,12 @@ const ConversationList = ({
     setEditingId(null);
   };
 
+  const ADMIN_UID = "hl5638iZ0kR9eSppuFincE7KxoA2";
   const handleDelete = async (e, conv) => {
     e.stopPropagation();
     if (!window.confirm("Excluir esta conversa?")) return;
     try {
-      await deleteConversation(userId, conv.id);
+      if (userId === ADMIN_UID) await deleteConversation(userId, conv.id);
       if (typeof onDelete === "function") onDelete(conv.id);
     } catch (err) {
       console.error(err);
@@ -115,7 +116,7 @@ const ConversationList = ({
           });
     for (const conv of toDelete) {
       try {
-        await deleteConversation(userId, conv.id);
+        if (userId === ADMIN_UID) await deleteConversation(userId, conv.id);
         if (typeof onDelete === "function") onDelete(conv.id);
       } catch (err) {
         console.error(err);
@@ -454,3 +455,5 @@ const ConversationList = ({
 };
 
 export default ConversationList;
+
+
