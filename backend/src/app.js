@@ -19,7 +19,7 @@ dotenv.config()
 const serviceAccount = JSON.parse(fs.readFileSync(new URL('../firebase-adminsdk.json', import.meta.url)))
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
 const app = express()
-app.use(helmet(), corsMiddleware, express.json({ limit: '50mb' }), express.urlencoded({ extended: true, limit: '50mb' }))
+app.use(helmet(), corsMiddleware, express.json({ limit: '200mb' }), express.urlencoded({ extended: true, limit: '200mb' }))
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))
 app.use('/api/chat', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }))
 app.use('/api/auth', authRoutes)
@@ -82,3 +82,4 @@ app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage() }).si
 })
 
 export const startServer = async () => { initDatabase(); app.listen(process.env.PORT || 3001); }
+
