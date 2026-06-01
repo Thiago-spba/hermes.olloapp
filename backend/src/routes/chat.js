@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode } = req.body
+    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -40,8 +40,8 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Base de Conhecimento (RAG)
-    if (!image) {
+    // Base de Conhecimento (RAG) — só ativa quando useRAG=true
+    if (!image && useRAG) {
       const allChunks = getKnowledgeChunks(userId)
       if (allChunks.length > 0) {
         const query = finalMessage || "resuma"
@@ -139,3 +139,4 @@ router.delete("/history", auth, (req, res) => {
 })
 
 export default router
+

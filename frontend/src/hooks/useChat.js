@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { sendMessage, uploadPDF, uploadKnowledge } from "../services/api";
+import { sendMessage, uploadKnowledge, extractPdfText } from "../services/api";
 
 const getTime = () =>
   new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -11,7 +11,6 @@ const WELCOME_MESSAGE = {
   time: getTime(),
 };
 
-// ✅ ALTERADO: aceita studyMode como parâmetro
 const useChat = (studyMode = false) => {
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,12 +38,11 @@ const useChat = (studyMode = false) => {
     localStorage.setItem("hermes-model", modelKey);
   }, []);
 
-  const sendUserMessage = useCallback(async (text, file = null, audio = null) => {
-    const displayContent = file
-      ? `${text ? text + "\n\n" : ""}[arquivo] ${file.name}`
-      : audio
-        ? `${text ? text + "\n\n" : ""}🎙️ Audio`
-        : text;
+  const sendUserMessage = useCallback(async (text, file = null, audio = null, useRAG = false) => {
+    // Conteudo exibido na bolha do usuario
+    const displayContent = audio
+      ? `${text ? text + "\n\n" : ""}🎙️ Audio`
+      : text || "";
 
     setMessages((prev) => [...prev, {
       id: Date.now(), role: "user", content: displayContent, time: getTime(), file: file || null,
@@ -64,25 +62,24 @@ const useChat = (studyMode = false) => {
 
       if (file) {
         if (file.type.startsWith("image/")) {
+          // Imagem: envia como base64 para analise visual
           imageBase64 = file.data;
         } else if (file.type === "application/pdf") {
-          const base64 = file.data.includes(",") ? file.data.split(",")[1] : file.data;
-          const byteChars = atob(base64);
-          const byteArr = new Uint8Array(byteChars.length);
-          for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-          const blob = new Blob([byteArr], { type: "application/pdf" });
-          const pdfFile = new File([blob], file.name, { type: "application/pdf" });
-          const result = await uploadKnowledge([pdfFile]);
-          const aiId = Date.now() + 2;
-          setMessages((prev) => prev.filter((m) => m.id !== thinkingId).concat({
-            id: aiId, role: "assistant", content: "", time: getTime(),
-          }));
-          setMessages((prev) => prev.map((m) =>
-            m.id === aiId ? { ...m, content: `PDF adicionado a Base de Conhecimento! Pode perguntar sobre ele agora.` } : m
-          ));
-          setIsLoading(false);
-          return;
+          // PDF: extrai texto via backend e envia inline na conversa
+          try {
+            const base64 = file.data.includes(",") ? file.data.split(",")[1] : file.data;
+            const byteChars = atob(base64);
+            const byteArr = new Uint8Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+            const blob = new Blob([byteArr], { type: "application/pdf" });
+            const pdfFile = new File([blob], file.name, { type: "application/pdf" });
+            const pdfText = await extractPdfText(pdfFile);
+            messageText += `\n\nConteudo do PDF "${file.name}":\n\`\`\`\n${pdfText}\n\`\`\``;
+          } catch {
+            messageText += `\n\n[PDF: ${file.name} - nao foi possivel extrair o texto]`;
+          }
         } else {
+          // Outros arquivos de texto/codigo
           try {
             const decoded = atob(file.data.split(",")[1]);
             messageText += `\n\nConteudo de "${file.name}":\n\`\`\`\n${decoded.substring(0, 3000)}\n\`\`\``;
@@ -116,7 +113,8 @@ const useChat = (studyMode = false) => {
         audioBase64,
         audioMime,
         selectedModel,
-        studyMode // ✅ ADICIONADO
+        studyMode,
+        useRAG
       );
 
       setHistory((prev) => [
@@ -126,13 +124,25 @@ const useChat = (studyMode = false) => {
       ]);
 
     } catch (error) {
+      const traduzirErro = (msg) => {
+        if (!msg) return "Erro desconhecido. Tente novamente.";
+        if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("network")) return "Sem conexao com o servidor. Verifique sua internet ou aguarde um momento.";
+        if (msg.includes("timeout") || msg.includes("Timeout")) return "O servidor demorou demais para responder. Tente novamente.";
+        if (msg.includes("401") || msg.includes("Unauthorized")) return "Sessao expirada. Faca login novamente.";
+        if (msg.includes("403") || msg.includes("Forbidden")) return "Acesso negado.";
+        if (msg.includes("429") || msg.includes("rate limit")) return "Muitas mensagens em pouco tempo. Aguarde alguns segundos.";
+        if (msg.includes("500") || msg.includes("Internal Server")) return "Erro interno do servidor. Tente novamente em instantes.";
+        if (msg.includes("502") || msg.includes("503") || msg.includes("504")) return "Servidor temporariamente indisponivel. Aguarde um momento.";
+        if (msg.includes("413") || msg.includes("too large")) return "Arquivo muito grande para enviar.";
+        return `Erro: ${msg}`;
+      };
       setMessages((prev) => prev.filter((m) => m.id !== thinkingId).concat({
-        id: Date.now() + 2, role: "error", content: `Erro: ${error.message}`, time: getTime(),
+        id: Date.now() + 2, role: "error", content: traduzirErro(error.message), time: getTime(),
       }));
     } finally {
       setIsLoading(false);
     }
-  }, [history, selectedModel, studyMode]); // ✅ ADICIONADO studyMode na dependência
+  }, [history, selectedModel, studyMode]);
 
   const clearChat = useCallback(() => {
     setMessages([WELCOME_MESSAGE]);
@@ -143,5 +153,3 @@ const useChat = (studyMode = false) => {
 };
 
 export default useChat;
-
-

@@ -14,13 +14,11 @@ import useChat from "./hooks/useChat";
 import useConversation from "./hooks/useConversation";
 import { checkHealth } from "./services/api";
 
-// ============ COMPONENTE DE BOAS-VINDAS ============
 const WelcomeScreen = ({ isDark }) => {
   const [greeting, setGreeting] = useState("");
   const [typedText, setTypedText] = useState("");
   const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
   const [fadePhrase, setFadePhrase] = useState(true);
-
   const rotatingPhrases = [
     { icon: "💻", text: "O código é poesia" },
     { icon: "📚", text: "Aprender é evoluir" },
@@ -31,7 +29,6 @@ const WelcomeScreen = ({ isDark }) => {
     { icon: "⚡", text: "Respostas em tempo real" },
     { icon: "🎓", text: "Thiago Doutor disponível" },
   ];
-
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) setGreeting("Bom dia");
@@ -39,7 +36,6 @@ const WelcomeScreen = ({ isDark }) => {
     else if (hour >= 18 && hour < 24) setGreeting("Boa noite");
     else setGreeting("Boa madrugada");
   }, []);
-
   useEffect(() => {
     if (!greeting) return;
     const fullText = `${greeting}! Como posso ajudar você hoje?`;
@@ -49,13 +45,10 @@ const WelcomeScreen = ({ isDark }) => {
       if (i <= fullText.length) {
         setTypedText(fullText.slice(0, i));
         i++;
-      } else {
-        clearInterval(timer);
-      }
+      } else clearInterval(timer);
     }, 60);
     return () => clearInterval(timer);
   }, [greeting]);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setFadePhrase(false);
@@ -66,9 +59,7 @@ const WelcomeScreen = ({ isDark }) => {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
   const currentPhrase = `${rotatingPhrases[currentPhraseIndex].icon} "${rotatingPhrases[currentPhraseIndex].text}"`;
-
   return (
     <div style={styles.welcomeContainer}>
       <div style={styles.welcomeContent}>
@@ -101,7 +92,6 @@ const WelcomeScreen = ({ isDark }) => {
             &gt;
           </span>
         </div>
-
         <div style={styles.greetingContainer}>
           <p
             style={{
@@ -113,14 +103,13 @@ const WelcomeScreen = ({ isDark }) => {
             <span style={styles.cursor}>|</span>
           </p>
         </div>
-
         <div style={styles.rotatingContainer}>
           <div
             style={{
               ...styles.rotatingText,
               backgroundColor: isDark
-                ? "rgba(0, 229, 255, 0.08)"
-                : "rgba(0, 114, 86, 0.06)",
+                ? "rgba(0,229,255,0.08)"
+                : "rgba(0,114,86,0.06)",
               color: isDark ? "#00e5aa" : "#007a55",
               opacity: fadePhrase ? 1 : 0,
               transform: fadePhrase ? "translateY(0)" : "translateY(5px)",
@@ -135,7 +124,6 @@ const WelcomeScreen = ({ isDark }) => {
   );
 };
 
-// ============ COMPONENTE DE CARREGAMENTO ============
 const LoadingScreen = () => (
   <div style={styles.loadingContainer}>
     <div style={styles.loadingContent}>
@@ -173,7 +161,6 @@ const LoadingScreen = () => (
   </div>
 );
 
-// ============ APP PRINCIPAL ============
 const App = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [user, setUser] = useState(null);
@@ -183,10 +170,11 @@ const App = () => {
   const [showProjects, setShowProjects] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
-
   const mainRef = useRef(null);
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
+  const saveDebounceRef = useRef(null);
+  const lastAssistantCountRef = useRef(0);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -206,7 +194,6 @@ const App = () => {
     startNewConversation,
   } = useConversation(user?.uid);
   const userId = user?.uid;
-
   const {
     messages,
     isLoading,
@@ -216,52 +203,32 @@ const App = () => {
     selectedModel,
     changeModel,
   } = useChat(studyMode);
-
   const showWelcomeScreen =
     !isLoading && messages.filter((m) => m.role === "user").length === 0;
 
-  // ✅ Função de scroll suave para o final
   const scrollToBottom = useCallback(() => {
-    // Só executa scroll se o usuário não estiver rolando manualmente
     if (isUserScrolling.current) return;
-
     setTimeout(() => {
-      const container = mainRef.current;
-      if (container) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: "smooth",
-        });
-      }
+      const c = mainRef.current;
+      if (c) c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
     }, 50);
   }, []);
 
-  // ✅ Detecta quando o usuário está rolando manualmente
   const handleUserScroll = useCallback(() => {
     isUserScrolling.current = true;
-
-    // Limpa timeout anterior
     if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
-
-    // Depois de 3 segundos sem scroll, reativa o scroll automático
     scrollTimeout.current = setTimeout(() => {
       isUserScrolling.current = false;
     }, 3000);
   }, []);
 
-  // ✅ Quando uma nova mensagem de USUÁRIO chega, scroll automático
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === "user") {
-      scrollToBottom();
-    }
+    const last = messages[messages.length - 1];
+    if (last && last.role === "user") scrollToBottom();
   }, [messages.length, scrollToBottom]);
 
-  // ✅ Quando uma nova mensagem do ASSISTENTE começa, scroll automático
   useEffect(() => {
-    if (isLoading) {
-      scrollToBottom();
-    }
+    if (isLoading) scrollToBottom();
   }, [isLoading, scrollToBottom]);
 
   useEffect(() => {
@@ -269,10 +236,8 @@ const App = () => {
       setUser(firebaseUser);
       setAuthLoading(false);
       if (firebaseUser) {
-        const pinDone = localStorage.getItem(
-          "hermes-pin-setup-" + firebaseUser.uid,
-        );
-        if (!pinDone) setShowPinSetup(true);
+        const p = localStorage.getItem("hermes-pin-setup-" + firebaseUser.uid);
+        if (!p) setShowPinSetup(true);
       }
     });
     return () => unsubscribe();
@@ -280,26 +245,35 @@ const App = () => {
 
   useEffect(() => {
     if (!user) return;
-    const loadSavedConversation = async () => {
+    const load = async () => {
       const conv = await resumeSavedConversation();
       if (conv?.messages?.length > 0) {
+        lastAssistantCountRef.current = conv.messages.filter(
+          (m) => m.role === "assistant",
+        ).length;
         loadMessages(conv.messages);
       }
     };
-    loadSavedConversation();
+    load();
   }, [user, resumeSavedConversation, loadMessages]);
 
   useEffect(() => {
-    if (!userId) return;
-    if (isLoading) return;
-    if (messages.length > 0 && messages.some(m => m.role === "user")) {
-      if (!conversationId) {
-        startNewConversation().then(() => onMessagesUpdate(messages));
-      } else {
-        onMessagesUpdate(messages);
-      }
-    }
-  }, [messages, isLoading, conversationId, onMessagesUpdate, startNewConversation, userId]);
+    if (!userId || isLoading) return;
+    const assistantMsgs = messages.filter(
+      (m) => m.role === "assistant" && m.content,
+    );
+    if (assistantMsgs.length === 0) return;
+    if (assistantMsgs.length <= lastAssistantCountRef.current) return;
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(async () => {
+      const current = messages.filter(
+        (m) => m.role === "assistant" && m.content,
+      ).length;
+      if (current <= lastAssistantCountRef.current) return;
+      lastAssistantCountRef.current = current;
+      await onMessagesUpdate(messages);
+    }, 1500);
+  }, [isLoading, messages, userId, onMessagesUpdate]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -314,36 +288,40 @@ const App = () => {
   }, [isDark]);
 
   useEffect(() => {
-    const verifyConnection = async () => {
+    const verify = async () => {
       setIsConnected(await checkHealth());
     };
-    verifyConnection();
-    const interval = setInterval(verifyConnection, 30000);
+    verify();
+    const interval = setInterval(verify, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const toggleTheme = () => setIsDark((prev) => !prev);
-
   const handleLogout = async () => {
     await signOut(auth);
     clearChat();
     localStorage.removeItem("hermes-conv-id");
   };
-
   const handleHistoryClick = async () => {
     await loadHistory();
     setShowHistory(true);
   };
 
   const handleSelectConversation = async (conv) => {
-    const messages = await resumeConversation(conv.id);
-    if (messages && messages.length > 0) {
-      loadMessages(messages);
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    const msgs = await resumeConversation(conv.id);
+    if (msgs && msgs.length > 0) {
+      lastAssistantCountRef.current = msgs.filter(
+        (m) => m.role === "assistant",
+      ).length;
+      loadMessages(msgs);
     }
     setShowHistory(false);
   };
 
   const handleNewConversation = async () => {
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    lastAssistantCountRef.current = 0;
     await finishAndStartNew(messages);
     clearChat();
     setShowHistory(false);
@@ -357,9 +335,8 @@ const App = () => {
     );
   };
 
-  const handleSendMessage = (text, file, audio) => {
-    sendUserMessage(text, file, audio);
-    // O scroll será acionado pelo useEffect quando a mensagem do usuário chegar
+  const handleSendMessage = (text, file, audio, useRAG) => {
+    sendUserMessage(text, file, audio, useRAG);
   };
 
   if (authLoading) return <LoadingScreen />;
@@ -379,7 +356,6 @@ const App = () => {
           onComplete={() => setShowPinSetup(false)}
         />
       )}
-
       {showHistory && (
         <ConversationList
           conversations={conversations}
@@ -392,22 +368,20 @@ const App = () => {
           isDark={isDark}
         />
       )}
-
       {showProjects && (
         <ProjectsModal
           isDark={isDark}
           onClose={() => setShowProjects(false)}
           onSelectProject={handleSelectProject}
+          userId={user?.uid}
         />
       )}
-
       {showKnowledge && (
         <KnowledgePanel
           isDark={isDark}
           onClose={() => setShowKnowledge(false)}
         />
       )}
-
       <Header
         isConnected={isConnected}
         isDark={isDark}
@@ -420,7 +394,6 @@ const App = () => {
         studyMode={studyMode}
         onToggleStudyMode={setStudyMode}
       />
-
       {studyMode && (
         <div
           style={{
@@ -441,7 +414,6 @@ const App = () => {
           </button>
         </div>
       )}
-
       <main ref={mainRef} style={styles.main} onScroll={handleUserScroll}>
         {showWelcomeScreen ? (
           <WelcomeScreen isDark={isDark} />
@@ -452,7 +424,6 @@ const App = () => {
                 <ChatMessage message={message} isDark={isDark} />
               </div>
             ))}
-
             {isLoading && (
               <div style={styles.typing}>
                 <div
@@ -474,7 +445,6 @@ const App = () => {
                 </div>
               </div>
             )}
-
             {messages.filter((m) => m.role === "user").length > 0 && (
               <button
                 onClick={handleNewConversation}
@@ -490,7 +460,6 @@ const App = () => {
           </>
         )}
       </main>
-
       <ModelSelector
         selectedModel={selectedModel}
         onModelChange={changeModel}
@@ -505,7 +474,6 @@ const App = () => {
   );
 };
 
-// ============ ESTILOS RESPONSIVOS ============
 const styles = {
   app: {
     display: "flex",
@@ -650,23 +618,16 @@ const styles = {
   },
 };
 
-// ============ ANIMAÇÕES CSS GLOBAIS ============
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
   @keyframes floatSoft { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
   @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
   @keyframes pulse { 0%, 60%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.2); } }
-  @media (max-width: 768px) { .welcome-content { padding: 16px; } }
-  @media (max-width: 480px) { .rotating-text { font-size: 12px; padding: 8px 12px; } }
   ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.3); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(0, 229, 255, 0.5); }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.3); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,229,255,0.5); }
 `;
 document.head.appendChild(styleSheet);
 
 export default App;
-
-
-
-

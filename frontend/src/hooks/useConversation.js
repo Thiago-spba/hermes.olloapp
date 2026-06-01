@@ -9,7 +9,6 @@ import {
 
 const INACTIVITY_LIMIT = 60 * 60 * 1000
 
-// ✅ Gera título descritivo removendo prefixos comuns
 const generateTitle = (messages) => {
   const firstUserMsg = messages.find(m => m.role === 'user')
   if (!firstUserMsg) return 'Nova conversa'
@@ -28,6 +27,8 @@ const useConversation = (userId) => {
   const inactivityTimer = useRef(null)
   const currentMessages = useRef([])
   const conversationIdRef = useRef(null)
+  // Evita criar conversa duplicada em chamadas simultâneas
+  const creatingRef = useRef(false)
 
   const loadHistory = useCallback(async () => {
     if (!userId) return
@@ -44,20 +45,23 @@ const useConversation = (userId) => {
     setConversations(prev => prev.filter(c => c.id !== id))
   }, [])
 
-  // ✅ Inicia nova conversa
   const startNewConversation = useCallback(async () => {
     if (!userId) return null
+    if (creatingRef.current) return conversationIdRef.current
+    creatingRef.current = true
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
-    const id = await createConversation(userId)
-    setConversationId(id)
-    conversationIdRef.current = id
-    currentMessages.current = []
-    // ✅ Salva no localStorage para retomar ao recarregar
-    localStorage.setItem('hermes-conv-id', id)
-    return id
+    try {
+      const id = await createConversation(userId)
+      setConversationId(id)
+      conversationIdRef.current = id
+      currentMessages.current = []
+      localStorage.setItem('hermes-conv-id', id)
+      return id
+    } finally {
+      creatingRef.current = false
+    }
   }, [userId])
 
-  // ✅ Tenta retomar conversa salva ao carregar
   const resumeSavedConversation = useCallback(async () => {
     if (!userId) return null
     const savedId = localStorage.getItem('hermes-conv-id')
@@ -67,10 +71,9 @@ const useConversation = (userId) => {
       if (conv && conv.messages?.length > 0) {
         setConversationId(savedId)
         conversationIdRef.current = savedId
-        currentMessages.current = conv.messages // ✅ CARREGA as mensagens da conversa salva
+        currentMessages.current = conv.messages
         return conv
       } else {
-        // Se a conversa salva não existe mais, remove do localStorage
         localStorage.removeItem('hermes-conv-id')
       }
     } catch (error) {
@@ -80,15 +83,13 @@ const useConversation = (userId) => {
     return null
   }, [userId])
 
-  // ✅ Salva mensagens
   const onMessagesUpdate = useCallback(async (messages) => {
     if (!userId) return
     let id = conversationIdRef.current
     if (!id) {
-      id = await createConversation(userId)
-      setConversationId(id)
-      conversationIdRef.current = id
-      localStorage.setItem('hermes-conv-id', id)
+      if (creatingRef.current) return
+      id = await startNewConversation()
+      if (!id) return
     }
     currentMessages.current = messages
     await saveMessages(userId, id, messages)
@@ -101,7 +102,6 @@ const useConversation = (userId) => {
     }, INACTIVITY_LIMIT)
   }, [userId, startNewConversation, loadHistory])
 
-  // ✅ Finaliza conversa atual e inicia nova
   const finishAndStartNew = useCallback(async (messages) => {
     if (!userId) return
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
@@ -111,22 +111,21 @@ const useConversation = (userId) => {
       await finishConversation(userId, id, title)
     }
     localStorage.removeItem('hermes-conv-id')
+    conversationIdRef.current = null
+    setConversationId(null)
     await startNewConversation()
     await loadHistory()
   }, [userId, startNewConversation, loadHistory])
 
-  // ✅ Resgata conversa do histórico
   const resumeConversation = useCallback(async (id) => {
     if (!userId || !id) return null
-    
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current)
-    
     try {
       const conv = await getConversation(userId, id)
       if (conv && conv.messages?.length > 0) {
         setConversationId(id)
         conversationIdRef.current = id
-        currentMessages.current = conv.messages // ✅ CARREGA as mensagens
+        currentMessages.current = conv.messages
         localStorage.setItem('hermes-conv-id', id)
         return conv.messages
       }
@@ -157,5 +156,3 @@ const useConversation = (userId) => {
 }
 
 export default useConversation
-
-

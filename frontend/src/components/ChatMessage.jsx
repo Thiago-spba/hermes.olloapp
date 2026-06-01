@@ -30,7 +30,6 @@ const MD_STYLES = `
   .hermes-md .katex { font-size: 1em; }
 `;
 
-// ✅ ECG animado ocupando toda a largura da bolha
 const ECGLine = () => (
   <div style={{ width: "100%", height: "48px", overflow: "hidden" }}>
     <style>{`
@@ -50,51 +49,7 @@ const ECGLine = () => (
       }}
     >
       <polyline
-        points="
-          0,24
-          30,24
-          45,24
-          55,4
-          65,44
-          75,10
-          85,24
-          100,24
-          130,24
-          145,24
-          155,4
-          165,44
-          175,10
-          185,24
-          200,24
-          230,24
-          245,24
-          255,4
-          265,44
-          275,10
-          285,24
-          300,24
-          330,24
-          345,24
-          355,4
-          365,44
-          375,10
-          385,24
-          400,24
-          430,24
-          445,24
-          455,4
-          465,44
-          475,10
-          485,24
-          500,24
-          530,24
-          545,24
-          555,4
-          565,44
-          575,10
-          585,24
-          600,24
-        "
+        points="0,24 30,24 45,24 55,4 65,44 75,10 85,24 100,24 130,24 145,24 155,4 165,44 175,10 185,24 200,24 230,24 245,24 255,4 265,44 275,10 285,24 300,24 330,24 345,24 355,4 365,44 375,10 385,24 400,24 430,24 445,24 455,4 465,44 475,10 485,24 500,24 530,24 545,24 555,4 565,44 575,10 585,24 600,24"
         fill="none"
         stroke="#00e5aa"
         strokeWidth="2"
@@ -105,6 +60,98 @@ const ECGLine = () => (
     </svg>
   </div>
 );
+
+// Card visual do arquivo anexado na mensagem do usuário
+const FileCard = ({ file, isDark }) => {
+  if (!file) return null;
+  const isImage = file.type?.startsWith("image/");
+  const isPDF = file.type === "application/pdf";
+  const sizeKB = file.size ? (file.size / 1024).toFixed(1) : "—";
+  const shortName =
+    file.name?.length > 28 ? file.name.substring(0, 28) + "..." : file.name;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "6px 10px",
+        borderRadius: "8px",
+        marginBottom: "6px",
+        backgroundColor: isDark ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.06)",
+        border: `1px solid ${isDark ? "#1a5c3a" : "#7aada0"}`,
+      }}
+    >
+      {isImage ? (
+        <img
+          src={file.data}
+          alt={file.name}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "6px",
+            objectFit: "cover",
+            flexShrink: 0,
+          }}
+        />
+      ) : isPDF ? (
+        <div
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "6px",
+            flexShrink: 0,
+            backgroundColor: isDark ? "#1a0a0a" : "#fde8e8",
+            border: `1px solid ${isDark ? "#5c1a1a" : "#f5a0a0"}`,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "1px",
+          }}
+        >
+          <span style={{ fontSize: "16px", lineHeight: 1 }}>📄</span>
+          <span
+            style={{
+              fontSize: "7px",
+              fontWeight: "700",
+              color: isDark ? "#ff6b6b" : "#cc2222",
+            }}
+          >
+            PDF
+          </span>
+        </div>
+      ) : (
+        <span style={{ fontSize: "24px", flexShrink: 0 }}>💻</span>
+      )}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "2px",
+          minWidth: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: "600",
+            color: isDark ? "#e0f5f0" : "#071a14",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {shortName}
+        </span>
+        <span style={{ fontSize: "10px", color: "#7aada0" }}>
+          {isImage ? "Imagem" : isPDF ? "PDF" : "Arquivo"} • {sizeKB} KB
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const ChatMessage = memo(({ message, isDark }) => {
   const isUser = message.role === "user";
@@ -186,7 +233,6 @@ const ChatMessage = memo(({ message, isDark }) => {
                 ? "#143d2e"
                 : "#b0ddd4",
           borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-          // ✅ largura maior quando pensando para o ECG ter espaço
           minWidth: isThinking ? "220px" : undefined,
         }}
       >
@@ -194,20 +240,29 @@ const ChatMessage = memo(({ message, isDark }) => {
           <ECGLine />
         ) : (
           <>
-            <div
-              className="hermes-md"
-              style={{
-                ...styles.text,
-                color: isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
-              }}
-            >
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
+            {/* Card do arquivo anexado — só na mensagem do usuário */}
+            {isUser && message.file && (
+              <FileCard file={message.file} isDark={isDark} />
+            )}
+
+            {/* Texto da mensagem — oculta se só tem arquivo sem texto */}
+            {(message.content || !message.file) && (
+              <div
+                className="hermes-md"
+                style={{
+                  ...styles.text,
+                  color: isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
+                }}
               >
-                {message.content}
-              </ReactMarkdown>
-            </div>
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {message.content || ""}
+                </ReactMarkdown>
+              </div>
+            )}
+
             <div
               style={{
                 display: "flex",
@@ -317,7 +372,7 @@ const styles = {
     objectFit: "cover",
     flexShrink: 0,
     border: "1px solid",
-    boxShadow: "0 0 8px rgba(0, 229, 255, 0.15)",
+    boxShadow: "0 0 8px rgba(0,229,255,0.15)",
     transition: "border-color 0.3s ease",
   },
   bubble: {
@@ -337,4 +392,3 @@ const styles = {
 };
 
 export default ChatMessage;
-

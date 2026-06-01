@@ -1,51 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  saveProject,
+  getProjects,
+  deleteProject,
+} from "../services/firestoreService";
+import { extractPdfText } from "../services/api";
 
-const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
+const INFO_CARD_KEY = "hermes-projects-info-dismissed";
+
+const ProjectsModal = ({ isDark, onClose, onSelectProject, userId }) => {
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", description: "", context: "" });
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    context: "",
+    pdfText: "",
+    pdfName: "",
+  });
   const [showForm, setShowForm] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("hermes-projects");
-    if (saved) setProjects(JSON.parse(saved));
-  }, []);
-
-  const save = (list) => {
-    setProjects(list);
-    localStorage.setItem("hermes-projects", JSON.stringify(list));
-  };
-
-  const handleSubmit = () => {
-    if (!form.name.trim()) return;
-    let updated;
-    if (editing !== null) {
-      updated = projects.map((p, i) => (i === editing ? { ...form } : p));
-      setEditing(null);
-    } else {
-      updated = [...projects, { ...form, id: Date.now() }];
-    }
-    save(updated);
-    setForm({ name: "", description: "", context: "" });
-    setShowForm(false);
-  };
-
-  const handleEdit = (i) => {
-    setForm(projects[i]);
-    setEditing(i);
-    setShowForm(true);
-  };
-
-  const handleDelete = (i) => {
-    if (confirm(`Deletar projeto "${projects[i].name}"?`)) {
-      save(projects.filter((_, idx) => idx !== i));
-    }
-  };
-
-  const handleSelect = (p) => {
-    onSelectProject(p);
-    onClose();
-  };
+  const [showInfo, setShowInfo] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  const infoTimerRef = useRef(null);
 
   const c = {
     bg: isDark ? "#071a14" : "#f0faf7",
@@ -53,8 +31,136 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
     border: isDark ? "#143d2e" : "#b0ddd4",
     text: isDark ? "#e0f5f0" : "#071a14",
     sub: isDark ? "#7aada0" : "#2a6b5a",
-    hover: isDark ? "#143d2e" : "#e0f5ef",
     input: isDark ? "#0a2218" : "#f5faf8",
+  };
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(INFO_CARD_KEY);
+    if (!dismissed) setShowInfo(true);
+  }, []);
+
+  useEffect(() => {
+    if (showInfo) {
+      infoTimerRef.current = setTimeout(() => setShowInfo(false), 12000);
+      return () => clearTimeout(infoTimerRef.current);
+    }
+  }, [showInfo]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const load = async () => {
+      try {
+        const list = await getProjects(userId);
+        setProjects(list);
+      } catch {
+        // fallback localStorage
+        const saved = localStorage.getItem("hermes-projects");
+        if (saved) setProjects(JSON.parse(saved));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [userId]);
+
+  const handleDismissInfo = () => {
+    clearTimeout(infoTimerRef.current);
+    setShowInfo(false);
+    localStorage.setItem(INFO_CARD_KEY, "1");
+  };
+
+  const handlePdfUpload = async (file) => {
+    if (!file || file.type !== "application/pdf") return;
+    setPdfLoading(true);
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = (e) => res(e.target.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const b64 = base64.includes(",") ? base64.split(",")[1] : base64;
+      const byteChars = atob(b64);
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++)
+        byteArr[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArr], { type: "application/pdf" });
+      const pdfFile = new File([blob], file.name, { type: "application/pdf" });
+      const text = await extractPdfText(pdfFile);
+      setForm((f) => ({ ...f, pdfText: text, pdfName: file.name }));
+    } catch {
+      alert("Erro ao extrair o PDF. Tente novamente.");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) return;
+    try {
+      const projectData = {
+        name: form.name,
+        description: form.description,
+        context: form.context,
+        pdfText: form.pdfText || "",
+        pdfName: form.pdfName || "",
+        ...(editing ? { id: editing } : {}),
+      };
+      const id = await saveProject(userId, projectData);
+      const saved = { ...projectData, id };
+      setProjects((prev) =>
+        editing
+          ? prev.map((p) => (p.id === editing ? saved : p))
+          : [saved, ...prev],
+      );
+      setEditing(null);
+      setForm({
+        name: "",
+        description: "",
+        context: "",
+        pdfText: "",
+        pdfName: "",
+      });
+      setShowForm(false);
+    } catch {
+      alert("Erro ao salvar projeto. Tente novamente.");
+    }
+  };
+
+  const handleEdit = (p) => {
+    setForm({
+      name: p.name,
+      description: p.description || "",
+      context: p.context || "",
+      pdfText: p.pdfText || "",
+      pdfName: p.pdfName || "",
+    });
+    setEditing(p.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (p) => {
+    if (!confirm(`Deletar projeto "${p.name}"?`)) return;
+    try {
+      await deleteProject(userId, p.id);
+      setProjects((prev) => prev.filter((x) => x.id !== p.id));
+    } catch {
+      alert("Erro ao deletar.");
+    }
+  };
+
+  const handleSelect = (p) => {
+    const context = [
+      p.description,
+      p.context,
+      p.pdfText
+        ? `Conteúdo do documento "${p.pdfName}":\n${p.pdfText.substring(0, 3000)}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    onSelectProject({ ...p, context });
+    onClose();
   };
 
   return (
@@ -120,9 +226,67 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
           </button>
         </div>
 
-        {/* Lista de projetos */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-          {projects.length === 0 && !showForm && (
+          {/* Card informativo */}
+          {showInfo && (
+            <div
+              style={{
+                backgroundColor: isDark
+                  ? "rgba(0,229,255,0.08)"
+                  : "rgba(0,200,150,0.08)",
+                border: `1px solid ${isDark ? "#00e5ff44" : "#00c89644"}`,
+                borderRadius: "12px",
+                padding: "14px 16px",
+                marginBottom: "16px",
+                position: "relative",
+              }}
+            >
+              <button
+                onClick={handleDismissInfo}
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "12px",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  color: c.sub,
+                }}
+              >
+                ✕
+              </button>
+              <div style={{ fontSize: "16px", marginBottom: "6px" }}>
+                📁 O que são Meus Projetos?
+              </div>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: c.sub,
+                  margin: 0,
+                  lineHeight: 1.6,
+                }}
+              >
+                Cadastre seus projetos aqui para que o Hermes tenha contexto
+                completo sobre eles. Adicione uma descrição, detalhes técnicos
+                ou até um PDF com a documentação. Ao selecionar um projeto, o
+                Hermes já começa a conversa sabendo tudo sobre ele.
+              </p>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: c.sub,
+                  marginTop: "8px",
+                  opacity: 0.6,
+                }}
+              >
+                Fecha automaticamente em 6 segundos
+              </div>
+            </div>
+          )}
+
+          {/* Lista vazia */}
+          {!loading && projects.length === 0 && !showForm && (
             <div
               style={{
                 textAlign: "center",
@@ -138,9 +302,23 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
             </div>
           )}
 
-          {projects.map((p, i) => (
+          {loading && (
             <div
-              key={p.id || i}
+              style={{
+                textAlign: "center",
+                padding: "40px",
+                color: c.sub,
+                fontSize: "13px",
+              }}
+            >
+              Carregando projetos...
+            </div>
+          )}
+
+          {/* Lista de projetos */}
+          {projects.map((p) => (
+            <div
+              key={p.id}
               style={{
                 backgroundColor: c.card,
                 border: `1px solid ${c.border}`,
@@ -151,50 +329,61 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
             >
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  fontSize: "14px",
+                  fontWeight: "700",
+                  color: c.text,
+                  marginBottom: "4px",
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: "700",
-                      color: c.text,
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {p.name}
-                  </div>
-                  {p.description && (
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: c.sub,
-                        marginBottom: "6px",
-                      }}
-                    >
-                      {p.description}
-                    </div>
-                  )}
-                  {p.context && (
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: c.sub,
-                        backgroundColor: isDark ? "#071a14" : "#e8f5f0",
-                        borderRadius: "6px",
-                        padding: "6px 8px",
-                        maxHeight: "60px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {p.context.substring(0, 150)}...
-                    </div>
-                  )}
-                </div>
+                {p.name}
               </div>
+              {p.description && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: c.sub,
+                    marginBottom: "6px",
+                  }}
+                >
+                  {p.description}
+                </div>
+              )}
+              {p.pdfName && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "11px",
+                    color: isDark ? "#ff6b6b" : "#cc2222",
+                    backgroundColor: isDark
+                      ? "rgba(255,0,0,0.08)"
+                      : "rgba(255,0,0,0.05)",
+                    borderRadius: "6px",
+                    padding: "4px 8px",
+                    marginBottom: "6px",
+                    width: "fit-content",
+                  }}
+                >
+                  <span>📄</span>
+                  <span>{p.pdfName}</span>
+                </div>
+              )}
+              {p.context && (
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: c.sub,
+                    backgroundColor: isDark ? "#071a14" : "#e8f5f0",
+                    borderRadius: "6px",
+                    padding: "6px 8px",
+                    maxHeight: "60px",
+                    overflow: "hidden",
+                  }}
+                >
+                  {p.context.substring(0, 150)}...
+                </div>
+              )}
               <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
                 <button
                   onClick={() => handleSelect(p)}
@@ -213,7 +402,7 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
                   Conversar sobre este projeto
                 </button>
                 <button
-                  onClick={() => handleEdit(i)}
+                  onClick={() => handleEdit(p)}
                   style={{
                     padding: "6px 10px",
                     borderRadius: "8px",
@@ -227,7 +416,7 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
                   ✏️
                 </button>
                 <button
-                  onClick={() => handleDelete(i)}
+                  onClick={() => handleDelete(p)}
                   style={{
                     padding: "6px 10px",
                     borderRadius: "8px",
@@ -263,7 +452,7 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
                   marginBottom: "12px",
                 }}
               >
-                {editing !== null ? "Editar Projeto" : "Novo Projeto"}
+                {editing ? "Editar Projeto" : "Novo Projeto"}
               </div>
 
               <input
@@ -307,12 +496,12 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
               <textarea
                 value={form.context}
                 onChange={(e) => setForm({ ...form, context: e.target.value })}
-                placeholder="Contexto do projeto — cole aqui detalhes, tecnologias, objetivos, problemas conhecidos..."
-                rows={5}
+                placeholder="Contexto do projeto — cole aqui detalhes, tecnologias, objetivos..."
+                rows={4}
                 style={{
                   width: "100%",
                   padding: "8px 10px",
-                  marginBottom: "12px",
+                  marginBottom: "8px",
                   backgroundColor: c.input,
                   border: `1px solid ${c.border}`,
                   borderRadius: "8px",
@@ -324,6 +513,79 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
                   fontFamily: "inherit",
                 }}
               />
+
+              {/* Upload PDF */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                style={{ display: "none" }}
+                onChange={(e) => handlePdfUpload(e.target.files[0])}
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `1px dashed ${form.pdfName ? (isDark ? "#00e5ff" : "#007a55") : c.border}`,
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  marginBottom: "12px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: form.pdfName
+                    ? isDark
+                      ? "rgba(0,229,255,0.06)"
+                      : "rgba(0,200,150,0.06)"
+                    : "transparent",
+                }}
+              >
+                {pdfLoading ? (
+                  <span style={{ fontSize: "12px", color: c.sub }}>
+                    Extraindo PDF...
+                  </span>
+                ) : form.pdfName ? (
+                  <>
+                    <span style={{ fontSize: "16px" }}>📄</span>
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          color: isDark ? "#00e5ff" : "#007a55",
+                        }}
+                      >
+                        {form.pdfName}
+                      </div>
+                      <div style={{ fontSize: "10px", color: c.sub }}>
+                        Texto extraído — clique para trocar
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setForm((f) => ({ ...f, pdfText: "", pdfName: "" }));
+                      }}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#ff4455",
+                        fontSize: "14px",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "16px" }}>📄</span>
+                    <span style={{ fontSize: "12px", color: c.sub }}>
+                      Anexar PDF (apostila, livro, documentação...)
+                    </span>
+                  </>
+                )}
+              </div>
 
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
@@ -340,13 +602,19 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
                     fontWeight: "700",
                   }}
                 >
-                  {editing !== null ? "Salvar alterações" : "Adicionar projeto"}
+                  {editing ? "Salvar alterações" : "Adicionar projeto"}
                 </button>
                 <button
                   onClick={() => {
                     setShowForm(false);
                     setEditing(null);
-                    setForm({ name: "", description: "", context: "" });
+                    setForm({
+                      name: "",
+                      description: "",
+                      context: "",
+                      pdfText: "",
+                      pdfName: "",
+                    });
                   }}
                   style={{
                     padding: "8px 14px",
@@ -374,7 +642,13 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
               onClick={() => {
                 setShowForm(true);
                 setEditing(null);
-                setForm({ name: "", description: "", context: "" });
+                setForm({
+                  name: "",
+                  description: "",
+                  context: "",
+                  pdfText: "",
+                  pdfName: "",
+                });
               }}
               style={{
                 width: "100%",
@@ -402,3 +676,4 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject }) => {
 };
 
 export default ProjectsModal;
+

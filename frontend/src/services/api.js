@@ -27,7 +27,7 @@ const authHeaders = async (json = false) => {
   return headers
 }
 
-export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false) => {
+export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false, useRAG = false) => {
   const headers = await authHeaders(true)
   const response = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
@@ -40,6 +40,7 @@ export const sendMessage = async (message, history = [], image = null, onToken =
       ...(audioMime && { audioMime }),
       modelKey,
       studyMode: studyMode || false,
+      useRAG: useRAG || false,
     }),
   })
 
@@ -97,7 +98,6 @@ export const checkHealth = async () => {
   }
 }
 
-// ✅ Modelos atualizados com Mistral e Cohere
 export const MODELS = {
   "thiago-analiza":      { name: "🔎 Thiago Analiza",      provider: "cohere",    free: true },
   "thiago-jr":           { name: "⚙️ Thiago Jr",           provider: "mistral",   free: true },
@@ -171,4 +171,13 @@ export const updateKnowledge = async (id, title, content) => {
   if (!response.ok) throw new Error('Erro ao atualizar')
   return response.json()
 }
-// cache-bust
+
+export const extractPdfText = async (file) => {
+  const headers = await authHeaders(false)
+  const formData = new FormData()
+  formData.append("pdf", file)
+  const response = await fetch(`${API_URL}/api/extract-pdf`, { method: "POST", headers, body: formData })
+  if (!response.ok) throw new Error("Erro ao extrair PDF")
+  const data = await response.json()
+  return data.text || ""
+}
