@@ -500,6 +500,9 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
   const [attachedAudio, setAttachedAudio] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const [useRAG, setUseRAG] = useState(false);
+  const [showRAGCard, setShowRAGCard] = useState(false);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -542,10 +545,11 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
   const handleSend = () => {
     const trimmed = text.trim();
     if ((!trimmed && !attachedFile && !attachedAudio) || isLoading) return;
-    onSend(trimmed, attachedFile, attachedAudio);
+    onSend(trimmed, attachedFile, attachedAudio, useRAG);
     setText("");
     setAttachedFile(null);
     setAttachedAudio(null);
+    setShowTools(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
@@ -654,46 +658,109 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
                   : "0 1px 3px rgba(0,0,0,0.05)",
           }}
         >
-          <FileAttachment
-            onFileSelect={(f) => {
-              setAttachedFile(f);
-              setAttachedAudio(null);
-            }}
-            isDark={isDark}
-            disabled={isLoading || !!attachedAudio}
-          />
-          <AudioRecorder
-            onAudioReady={(a) => {
-              setAttachedAudio(a);
-              setAttachedFile(null);
-            }}
-            isDark={isDark}
-            disabled={isLoading || !!attachedFile}
-          />
-          <button
-            onClick={() => setShowCamera(true)}
-            disabled={isLoading || !!attachedFile || !!attachedAudio}
-            title="Tirar foto"
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor:
-                isLoading || !!attachedFile || !!attachedAudio
-                  ? "not-allowed"
-                  : "pointer",
-              padding: "4px",
-              borderRadius: "8px",
-              fontSize: "18px",
-              opacity: isLoading || !!attachedFile || !!attachedAudio ? 0.4 : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              transition: "opacity 0.2s",
-            }}
-          >
-            📷
-          </button>
+          {/* MENU FERRAMENTAS */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", flexShrink: 0 }}>
+            {showTools && (
+              <>
+                <div onClick={() => setShowTools(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
+                <div style={{
+                  position: "absolute",
+                  bottom: "48px",
+                  left: 0,
+                  zIndex: 20,
+                  backgroundColor: isDark ? "#0d2e1f" : "#ffffff",
+                  border: `1px solid ${isDark ? "#1a5c3a" : "#b0ddd4"}`,
+                  borderRadius: "12px",
+                  padding: "6px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+                  minWidth: "160px",
+                }}>
+                  {/* ANEXAR */}
+                  <FileAttachment
+                    onFileSelect={(f) => { setAttachedFile(f); setAttachedAudio(null); setShowTools(false); }}
+                    isDark={isDark}
+                    disabled={isLoading || !!attachedAudio}
+                    showLabel={true}
+                  />
+                  {/* CAMERA */}
+                  <div onClick={() => { if (!isLoading && !attachedFile && !attachedAudio) { setShowCamera(true); setShowTools(false); } }}
+                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "8px", cursor: "pointer", opacity: isLoading || !!attachedFile || !!attachedAudio ? 0.4 : 1 }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? "#143d2e" : "#f0faf7"}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}>
+                    <span style={{ fontSize: "18px" }}>📷</span>
+                    <span style={{ fontSize: "13px", color: isDark ? "#e0f5f0" : "#071a14" }}>Câmera</span>
+                  </div>
+                  {/* BASE DE CONHECIMENTO — TOGGLE */}
+                  <div onClick={() => setUseRAG(v => !v)}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", padding: "8px 10px", borderRadius: "8px", cursor: "pointer", backgroundColor: useRAG ? (isDark ? "rgba(0,229,255,0.08)" : "rgba(0,200,150,0.08)") : "transparent" }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? "#143d2e" : "#f0faf7"}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = useRAG ? (isDark ? "rgba(0,229,255,0.08)" : "rgba(0,200,150,0.08)") : "transparent"}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "16px" }}>🎓</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: isDark ? "#e0f5f0" : "#071a14" }}>Base de conhecimento</span>
+                        <span style={{ fontSize: "10px", color: useRAG ? (isDark ? "#00e5ff" : "#007a55") : (isDark ? "#3d6b5e" : "#7aada0") }}>
+                          {useRAG ? "Ativa — buscando nos documentos" : "Inativa — sem consultar documentos"}
+                        </span>
+                      </div>
+                    </div>
+                    {/* SWITCH */}
+                    <div style={{
+                      width: "36px", height: "20px", borderRadius: "10px", flexShrink: 0,
+                      backgroundColor: useRAG ? (isDark ? "#00e5ff" : "#00c896") : (isDark ? "#1a4a30" : "#c0ddd4"),
+                      position: "relative", transition: "background-color 0.25s ease", cursor: "pointer",
+                    }}>
+                      <div style={{
+                        position: "absolute", top: "3px",
+                        left: useRAG ? "19px" : "3px",
+                        width: "14px", height: "14px", borderRadius: "50%",
+                        backgroundColor: "white",
+                        transition: "left 0.25s ease",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* SETA + MICROFONE */}
+            <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+              <AudioRecorder
+                onAudioReady={(a) => { setAttachedAudio(a); setAttachedFile(null); }}
+                isDark={isDark}
+                disabled={isLoading || !!attachedFile}
+              />
+              <button
+                onClick={() => setShowTools(v => !v)}
+                disabled={isLoading}
+                title="Ferramentas"
+                style={{
+                  background: showTools ? (isDark ? "rgba(0,229,255,0.15)" : "rgba(0,200,150,0.15)") : "transparent",
+                  border: "none",
+                  cursor: isLoading ? "not-allowed" : "pointer",
+                  padding: "2px 3px",
+                  borderRadius: "6px",
+                  fontSize: "10px",
+                  color: useRAG ? (isDark ? "#00e5ff" : "#007a55") : (isDark ? "#7aada0" : "#2a6b5a"),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  transition: "all 0.2s",
+                  transform: showTools ? "rotate(180deg)" : "rotate(0deg)",
+                  fontWeight: "700",
+                }}
+              >
+                ▲
+              </button>
+            </div>
+          </div>
+
+
 
           {isLoading ? (
             <Heartbeat isDark={isDark} />
@@ -858,3 +925,9 @@ const styles = {
 };
 
 export default ChatInput;
+
+
+
+
+
+

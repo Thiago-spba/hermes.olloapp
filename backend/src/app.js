@@ -81,5 +81,12 @@ app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage() }).si
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-export const startServer = async () => { initDatabase(); app.listen(process.env.PORT || 3001); }
+app.post("/api/extract-pdf", auth, multer({ storage: multer.memoryStorage() }).single("pdf"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Arquivo nao enviado" })
+    const text = await extractPdfText(req.file.buffer.toString("base64"))
+    res.json({ text: text.substring(0, 8000) })
+  } catch (err) { res.status(500).json({ error: err.message }) }
+})
 
+export const startServer = async () => { initDatabase(); app.listen(process.env.PORT || 3001); }

@@ -1,7 +1,7 @@
 import { db } from './firebase'
 import {
   collection, addDoc, setDoc, getDocs,
-  doc, query, orderBy, limit, serverTimestamp, deleteDoc
+  doc, query, orderBy, limit, serverTimestamp, deleteDoc, getDoc
 } from 'firebase/firestore'
 
 export const createConversation = async (userId) => {
@@ -50,3 +50,30 @@ export const getConversation = async (userId, conversationId) => {
   return found ? { id: found.id, ...found.data() } : null
 }
 
+// ============ PROJETOS ============
+
+export const saveProject = async (userId, project) => {
+  if (project.id) {
+    const ref = doc(db, 'projects', userId, 'items', project.id)
+    await setDoc(ref, { ...project, updatedAt: serverTimestamp() }, { merge: true })
+    return project.id
+  } else {
+    const ref = await addDoc(collection(db, 'projects', userId, 'items'), {
+      ...project,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+    return ref.id
+  }
+}
+
+export const getProjects = async (userId) => {
+  const q = query(collection(db, 'projects', userId, 'items'), orderBy('createdAt', 'desc'))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export const deleteProject = async (userId, projectId) => {
+  const ref = doc(db, 'projects', userId, 'items', projectId)
+  await deleteDoc(ref)
+}

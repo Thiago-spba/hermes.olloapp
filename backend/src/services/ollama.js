@@ -301,13 +301,20 @@ export const chatStream = async function* (message, history = [], image = null, 
   const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
 
   // Limita historico para modelos com menor contexto
+  // Normaliza content para string — Groq/Mistral nao aceitam arrays
+  const normalizeContent = (m) => {
+    if (typeof m.content === "string") return m.content;
+    if (Array.isArray(m.content)) return m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]";
+    return String(m.content || "");
+  };
+
   const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
     ? history.filter(m => m.content).slice(-20)
     : history.filter(m => m.content);
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...limitedHistory.map(m => ({ role: m.role, content: m.content }))
+    ...limitedHistory.map(m => ({ role: m.role, content: (model.provider === "groq" || model.provider === "mistral") ? normalizeContent(m) : m.content }))
   ];
 
   if (image) {
@@ -386,3 +393,4 @@ export const extractMemoryFacts = async (userMessage, assistantResponse) => {
 
 export const checkOllamaHealth = async () => true;
 export const checkWhisperHealth = async () => false;
+
