@@ -295,6 +295,7 @@ export const chatStream = async function* (message, history = [], image = null, 
 
   let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
   if (image && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
+    const oldName = MODELS[selectedKey]?.name || selectedKey;
     selectedKey = "thiago-senior";
   }
 
@@ -308,8 +309,21 @@ export const chatStream = async function* (message, history = [], image = null, 
     return String(m.content || "");
   };
 
+  const estimateTokens = (text) => Math.ceil(String(text || "").length / 4);
+  const limitHistoryByTokens = (hist, maxTokens) => {
+    const filtered = hist.filter(m => m.content);
+    let total = 0;
+    const result = [];
+    for (let i = filtered.length - 1; i >= 0; i--) {
+      const tokens = estimateTokens(Array.isArray(filtered[i].content) ? filtered[i].content.filter(c => c.type === "text").map(c => c.text).join(" ") : filtered[i].content);
+      if (total + tokens > maxTokens) break;
+      total += tokens;
+      result.unshift(filtered[i]);
+    }
+    return result;
+  };
   const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
-    ? history.filter(m => m.content).slice(-20)
+    ? limitHistoryByTokens(history, 7000)
     : history.filter(m => m.content);
 
   const messages = [
@@ -350,11 +364,57 @@ export const chatStream = async function* (message, history = [], image = null, 
       yield* mistralStream("mistral-small-latest", messages);
     }
   } else if (model.provider === "mistral") {
-    yield* mistralStream(model.id, messages);
+    try {
+      yield* mistralStream(model.id, messages);
+    } catch (err) {
+      if (err.message && (err.message.includes("429") || err.message.includes("rate"))) {
+        yield `> 🔄 *${model.name} atingiu o limite — continuando com 🧠 Thiago Sênior.*\n\n`;
+        const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
+        yield* groqStream(MODELS["thiago-senior"].id, safe);
+      } else { throw err; }
+    }
   } else if (model.provider === "cohere") {
-    yield* cohereStream(model.id, messages, systemPrompt);
+    try {
+      yield* cohereStream(model.id, messages, systemPrompt);
+    } catch (err) {
+      if (err.message && (err.message.includes("429") || err.message.includes("422") || err.message.includes("rate") || err.message.includes("NO_VALID"))) {
+        yield `> 🔄 *${model.name} atingiu o limite — continuando com ⚙️ Thiago Jr.*\n\n`;
+        const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
+        yield* mistralStream(MODELS["thiago-jr"].id, safe);
+      } else { throw err; }
+    }
   } else {
-    yield* groqStream(model.id, messages);
+    const FALLBACK_QUEUE = ["thiago-analiza","thiago-jr","thiago-senior","thiago-doutor","thiago-especialista","thiago-supremo"];
+    const MODEL_NAMES = {"thiago-analiza":"🔎 Thiago Analiza","thiago-jr":"⚙️ Thiago Jr","thiago-senior":"🧠 Thiago Sênior","thiago-doutor":"🎓 Thiago Doutor","thiago-especialista":"🔬 Thiago Especialista","thiago-supremo":"👑 Thiago Supremo"};
+    const isRateError = (e) => e.message && (e.message.includes("413") || e.message.includes("429") || e.message.includes("rate") || e.message.includes("limit"));
+    const toText = (msgs) => msgs.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
+    const systemMsg = messages.find(m => m.role === "system");
+    const userMsg = messages[messages.length - 1];
+    const histMsgs = messages.filter(m => m.role !== "system").slice(0, -1);
+    const normalizeMsg = (m) => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")});
+    const reducedMessages = [systemMsg, ...histMsgs.slice(-3), userMsg].filter(Boolean).map(normalizeMsg);
+    let success = false;
+    try { yield* groqStream(model.id, messages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
+    if (!success) {
+      try { yield* groqStream(model.id, reducedMessages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
+    }
+    if (!success) {
+      const currentIndex = FALLBACK_QUEUE.indexOf(selectedKey);
+      const hasImage = image !== null;
+      let nextIndex = hasImage ? FALLBACK_QUEUE.indexOf("thiago-doutor") : currentIndex + 1;
+      if (nextIndex < 0 || nextIndex >= FALLBACK_QUEUE.length) {
+        yield `> ⚠️ *Todos os modelos estão no limite. Tente em alguns minutos.*\n\n`;
+        return;
+      }
+      const nextKey = FALLBACK_QUEUE[nextIndex];
+      const nextModel = MODELS[nextKey];
+      yield `> 🔄 *${MODEL_NAMES[selectedKey] || model.name} atingiu o limite — continuando com ${MODEL_NAMES[nextKey]}.*\n\n`;
+      const safe = toText(reducedMessages);
+      if (nextModel.provider === "anthropic") { yield* anthropicStream(nextModel.id, hasImage ? messages : safe, systemPrompt); }
+      else if (nextModel.provider === "mistral") { yield* mistralStream(nextModel.id, safe); }
+      else if (nextModel.provider === "cohere") { yield* cohereStream(nextModel.id, safe, systemPrompt); }
+      else { yield* groqStream(nextModel.id, safe); }
+    }
   }
 };
 
