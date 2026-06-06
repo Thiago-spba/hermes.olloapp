@@ -1,313 +1,411 @@
-# 🏛️ HERMES AI AGENT
+import dotenv from "dotenv";
+dotenv.config();
 
-> *"Não há problema sem solução. Apresente o seu."*
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+const COHERE_API_KEY = process.env.COHERE_API_KEY;
 
-**🔗 [hermes.olloapp.com.br](https://hermes.olloapp.com.br)**
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
+const COHERE_URL = "https://api.cohere.com/v2/chat";
 
----
+export const MODELS = {
+  "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
+  "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
+  "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
+  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5",        name: "🎓 Thiago Doutor",       free: false },
+  "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",       name: "🔬 Thiago Especialista", free: false },
+  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",         name: "👑 Thiago Supremo",      free: false },
+};
 
-## ⚡ O que é o Hermes?
+const DEFAULT_MODEL = "thiago-doutor";
 
-O **Hermes AI Agent** é um assistente de inteligência artificial pessoal **100% self-hosted**, desenvolvido do zero por Thiago Fernando. Roda integralmente no **Oracle Cloud Free Tier** — sem custo de infraestrutura — e integra **6 modelos de IA de ponta** via API, com streaming de respostas em tempo real.
+const BASE_PROMPT = `Voce e o HERMES — um agente de inteligencia artificial de elite, criado para ser o assistente pessoal definitivo do Thiago.
 
-**Diferenciais:**
-- 🔒 Privacidade total — dados no seu servidor
-- 🤖 6 modelos de IA intercambiáveis em tempo real
-- 🧠 Memória persistente e base de conhecimento por usuário
-- 📖 Modo Estudo com formato pedagógico estruturado
-- 🔄 Retomada automática de conversa ao recarregar
-- 🛡️ Segurança enterprise com isolamento total por usuário
+NUCLEO DE IDENTIDADE:
+Voce combina o rigor de um engenheiro senior, a precisao de um pesquisador cientifico e a clareza de um professor excepcional. Seu padrao minimo de resposta e o que um profissional senior entregaria para um colega de alto nivel.
 
----
+AREAS DE CONHECIMENTO — SEM RESTRICOES:
+Voce responde com o mesmo rigor e qualidade sobre QUALQUER assunto: engenharia, programacao, tecnologia, redes, eletrica, eletronica, matematica, ciencias exatas, saude, medicina, nutricao, historia, direito, financas, economia, filosofia, psicologia, culinaria, arte, musica, literatura, idiomas, esportes, geopolitica, e qualquer outro tema. Nao ha perguntas fora do escopo. Se o Thiago pergunta, voce responde.
 
-## 🏗️ Arquitetura
+ANTES DE RESPONDER — pergunte a si mesmo:
+- Tenho certeza absoluta disso ou estou suposicionando?
+- Esta e a forma mais clara e direta de explicar?
+- Existe risco nessa acao que o usuario precisa saber antes?
+- Estou resolvendo o problema raiz ou apenas o sintoma?
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    USUÁRIO (Browser/PWA)                │
-└───────────────────────┬─────────────────────────────────┘
-                        │ HTTPS
-┌───────────────────────▼─────────────────────────────────┐
-│              Firebase Hosting (Frontend)                │
-│              hermes.olloapp.com.br                      │
-└───────────────────────┬─────────────────────────────────┘
-                        │ HTTPS / SSE Streaming
-┌───────────────────────▼─────────────────────────────────┐
-│         Nginx (Proxy Reverso + SSL Let's Encrypt)       │
-│         Oracle Cloud ARM A1 — 147.15.84.45              │
-└───────────────────────┬─────────────────────────────────┘
-                        │ :3001
-┌───────────────────────▼─────────────────────────────────┐
-│         Node.js v20 + Express 5 (Backend API)           │
-│         PM2 — Gerenciamento de Processos 24/7           │
-└──────┬──────────┬──────────┬──────────┬─────────────────┘
-       │          │          │          │
-       ▼          ▼          ▼          ▼
-  Groq API   Anthropic   Mistral AI  Cohere AI
-  (Sênior)   (3 modelos) (Jr)        (Analiza)
-                        │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-        SQLite Local            Firestore
-     (memória, RAG,         (histórico de
-      knowledge base)        conversas)
-```
+COMUNICACAO:
+- Portugues brasileiro. Direto, tecnico, sem enrolacao.
+- Calibre a profundidade da resposta ao nivel demonstrado pelo usuario.
+- Para conceitos complexos: analogia primeiro, tecnica depois.
+- Imagens e documentos: extraia TODOS os detalhes tecnicos relevantes — numeros, erros, versoes, topologia, componentes.
 
----
+INTEGRIDADE ABSOLUTA:
+- Certeza = responda. Duvida = declare a duvida. Desconhecimento = diga claramente.
+- Nunca invente dados, codigos, APIs, referencias, nomes de funcoes ou resultados.
+- Nunca complete lacunas com suposicoes disfarcadas de fatos.
+- Se nao souber: "Nao tenho certeza sobre isso. Recomendo verificar em [fonte especifica: documentacao oficial / IEEE / MDN / RFC / fabricante]."
 
-## 🛠️ Stack Tecnológica
+METODO DE TRABALHO:
+- OBRIGATORIO: Antes de qualquer resposta que tenha mais de uma etapa ou topico, PARE e pergunte PRIMEIRO: "Prefere que eu entregue tudo de uma vez ou etapa por etapa?" Somente responda apos receber confirmacao do usuario. Nunca pule essa pergunta.
+- Tarefas multiplas etapas: UMA etapa por vez. Aguarde confirmacao antes de avancar.
+- Codigo: explique a logica ANTES de mostrar o codigo. Aponte riscos antes de executar.
+- Debugging: identifique a causa raiz, nao apenas o sintoma. Proponha solucao definitiva.
+- Calculos de engenharia: mostre o raciocinio completo, unidades e hipoteses assumidas.
+- Quando houver multiplas solucoes validas: apresente as opcoes com trade-offs claros.
 
-| Camada | Tecnologia | Versão | Função |
-|--------|-----------|--------|--------|
-| Frontend | React + Vite | 19 / 8 | PWA — Interface responsiva dark/light |
-| Hosting | Firebase Hosting | Spark | CDN global, deploy automático |
-| DNS | GoDaddy CNAME | — | hermes.olloapp.com.br |
-| Runtime | Node.js | v20.20.2 | Backend ESM (type: module) |
-| Framework | Express | 5 | API REST + SSE Streaming |
-| Processo | PM2 | — | Gerenciador 24/7 com auto-restart |
-| Proxy | Nginx + Certbot | — | HTTPS, SSL Let's Encrypt, proxy reverso |
-| Servidor | Oracle Cloud ARM A1 | Free Tier | 4 OCPUs / 24GB RAM |
-| 🔎 IA Analiza | Cohere command-a-03-2025 | — | Análise profunda e estruturada |
-| ⚙️ IA Jr | Mistral mistral-small-latest | — | Respostas rápidas, plano gratuito |
-| 🧠 IA Sênior | Groq llama-3.3-70b | — | Raciocínio avançado, alta velocidade |
-| 🎓 IA Doutor | Claude Haiku 4.5 | — | Padrão do sistema, balanceado |
-| 🔬 IA Especialista | Claude Sonnet 4.6 | — | Tarefas complexas e técnicas |
-| 👑 IA Supremo | Claude Opus 4.7 | — | Máxima capacidade, protegido por senha |
-| Áudio | Groq Whisper large-v3-turbo | — | Transcrição de áudio WAV |
-| Banco Local | SQLite (better-sqlite3) | — | Memória, RAG, base de conhecimento |
-| Banco Cloud | Firestore | — | Histórico de conversas por usuário |
-| Auth | Firebase Auth + Admin SDK | — | Google + Email/Password — JWT verificado |
+PROATIVIDADE:
+- Se detectar um erro ou risco nao perguntado, aponte antes de responder o que foi pedido.
+- Se a pergunta for ambigua, resolva a interpretacao mais provavel E pergunte se era isso.
+- Sugira a proxima etapa logica ao final de respostas tecnicas complexas.
 
----
+FERRAMENTAS:
+- Dados e comparacoes visuais: oferea gerar com Chart.js ou tabela markdown estruturada.
+- Calculos complexos: mostre formula, substituicao numerica e resultado com unidades.
+- Fontes confiaveis para verificacao: documentacao oficial, IEEE Xplore, MDN Web Docs, RFC, datasheets do fabricante.
 
-## 🚀 Funcionalidades
+REGRA ABSOLUTA:
+Quando a mensagem contiver a secao CONTEUDO, responda EXCLUSIVAMENTE com base nesse conteudo. Nunca alegue nao ter acesso a documentos quando o conteudo estiver presente.`;
 
-### 🤖 Inteligência Artificial
-- **6 modelos intercambiáveis** em tempo real via seletor no rodapé
-- **Streaming SSE** — respostas token a token, sem espera
-- **Fallback automático** — Claude falha → Mistral Jr automaticamente
-- **Análise de imagens** — detecção automática usa modelo multimodal
-- **Transcrição de áudio** — gravação WAV → Groq Whisper → texto
+const STUDY_MODE_PROMPT = `
 
-### 📖 Modo Estudo
-Ativado via botão 💡 no menu com card de confirmação. Toda resposta segue formato pedagógico obrigatório:
+MODO ESTUDO ATIVO:
+Voce esta em modo de ensino estruturado. Para CADA resposta, independente do assunto, siga OBRIGATORIAMENTE este formato:
 
-| Seção | Descrição |
-|-------|-----------|
-| 📖 CONCEITO | Explicação clara, direta e tecnicamente precisa |
-| 💡 EXEMPLO | Caso prático e real que ilustra o conceito |
-| ✏️ EXERCICIO | Questão ou desafio para fixar o conteúdo |
+📖 CONCEITO
+Explique o conceito de forma clara, direta e precisa. Use linguagem acessivel sem perder rigor tecnico.
 
-Badge visual permanente quando ativo, com botão de desativar rápido.
+💡 EXEMPLO
+Apresente um exemplo pratico e real que ilustre o conceito. Prefira exemplos do cotidiano ou da area tecnica relevante.
 
-### 🧠 Memória e Contexto
-- **Memória automática** — extrai fatos da conversa em background via Mistral
-- **Comando `/lembrar`** — salva informações manualmente (`/lembrar nome: Thiago`)
-- **Base de Conhecimento** — PDFs, TXTs e textos digitados persistentes por usuário
-- **RAG** — busca chunks relevantes antes de responder
-- **Histórico de conversas** — salvo no Firestore com título gerado automaticamente
-- **Retomada automática** — ao recarregar a página, retoma a conversa atual via localStorage
+✏️ EXERCICIO
+Proponha uma questao ou desafio pratico para o usuario fixar o conteudo. Pode ser uma pergunta reflexiva, um problema para resolver ou uma tarefa pratica.
 
-### 🎨 Tela Inicial Animada
-- Símbolo `</>` com animação suave
-- Saudação automática por horário (Bom dia / Boa tarde / Boa noite / Boa madrugada)
-- Efeito máquina de escrever com frases rotativas
-- Grid de sugestões de mensagens clicáveis
-- Dicas de atalhos do teclado
+Este formato e obrigatorio em TODAS as respostas enquanto o modo estudo estiver ativo.`;
 
-### 📷 Entrada Multimodal
-- **Câmera integrada** — viewfinder com grade, zoom 1-3x, lanterna, câmera frontal/traseira
-- **Ctrl+V** — cola imagens diretamente do clipboard
-- **Drag & Drop** — arrasta arquivos para o chat
-- **Upload** — PDF, TXT, imagens, código (até 50MB)
+const buildSystemPrompt = (memory = null, studyMode = false) => {
+  let prompt = BASE_PROMPT;
+  if (studyMode) prompt += STUDY_MODE_PROMPT;
+  if (memory) prompt += `\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}`;
+  return prompt;
+};
 
-### 🔐 Segurança
-- **Firebase Auth** — token JWT verificado em cada requisição
-- **CORS blindado** — apenas origens autorizadas
-- **Sanitização XSS** — remove tags HTML/script e eventos JavaScript de todos os inputs
-- **Rate limiting** — 100 req/15min global, 20 req/15min no chat
-- **Helmet.js** — headers de segurança HTTP
-- **Isolamento por usuário** — cada conta tem dados 100% separados
-- **Firestore Security Rules** — limites por usuário com admin privilegiado
-- **Senha para modelo Supremo** — Claude Opus protegido por senha
+// ============ GROQ ============
+const groqRequest = async (modelId, messages) => {
+  return await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
+};
 
-### 🔒 Limites de Segurança (Firestore Rules)
+const groqStream = async function* (modelId, messages) {
+  const response = await groqRequest(modelId, messages);
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq erro ${response.status}: ${err}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line.replace("data: ", ""));
+        const token = json.choices?.[0]?.delta?.content;
+        if (token) yield token;
+      } catch {}
+    }
+  }
+};
 
-| Recurso | Usuários Comuns | Admin (Thiago) |
-|---------|----------------|----------------|
-| Tamanho da mensagem | 10.000 caracteres | Ilimitado |
-| Mensagens por conversa | 100 | Ilimitado |
-| Tamanho do título | 100 caracteres | Ilimitado |
-| Requisições por 15min | 20 mensagens | Ilimitado |
-| Upload de imagem/áudio | 5MB | Ilimitado |
+// ============ MISTRAL ============
+const mistralStream = async function* (modelId, messages) {
+  const response = await fetch(MISTRAL_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${MISTRAL_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Mistral erro ${response.status}: ${err}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line.replace("data: ", ""));
+        const token = json.choices?.[0]?.delta?.content;
+        if (token) yield token;
+      } catch {}
+    }
+  }
+};
 
-### 🎨 Interface
-- **Dark/Light mode** — com persistência de preferência
-- **Tela inicial animada** — WelcomeScreen com sugestões interativas
-- **Markdown completo** — negrito, listas, tabelas, código, blockquote
-- **LaTeX/KaTeX** — equações matemáticas renderizadas
-- **Monitor cardíaco animado** — indicador visual durante processamento
-- **Indicador de modelo** — tag mostra qual IA respondeu cada mensagem
-- **Controle de voz** — seletor de voz, velocidade 0.7x-2.0x, TTS
-- **Zoom de texto** — P / M / G / GG
-- **Wake Lock** — mantém tela ativa no celular
+// ============ COHERE ============
+const cohereStream = async function* (modelId, messages, systemPrompt) {
+  const cohereMessages = messages.filter(m => m.role !== "system").map(m => ({
+    role: m.role,
+    content: typeof m.content === "string" ? m.content : (m.content?.[0]?.text || "")
+  }));
 
----
+  const response = await fetch(COHERE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${COHERE_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...cohereMessages
+      ],
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
 
-## 📂 Estrutura de Arquivos
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Cohere erro ${response.status}: ${err}`);
+  }
 
-```
-hermes-ai-agent/
-├── backend/
-│   ├── index.js                      # Ponto de entrada
-│   ├── hermes.sqlite                 # Banco de dados local
-│   ├── firebase-adminsdk.json        # ⚠️ NÃO commitar
-│   ├── .env                          # ⚠️ NÃO commitar
-│   └── src/
-│       ├── app.js                    # Express, middlewares, rotas
-│       ├── routes/
-│       │   ├── chat.js               # SSE, studyMode, /lembrar, RAG
-│       │   └── auth.js               # JWT legado
-│       ├── middleware/
-│       │   ├── auth.js               # Verifica Firebase token
-│       │   ├── cors.js               # Origens permitidas
-│       │   └── sanitize.js           # Sanitização XSS + validação
-│       └── services/
-│           ├── ollama.js             # 6 modelos, fallback, Modo Estudo
-│           ├── whisper.js            # Transcrição de áudio
-│           ├── database.js           # SQLite — 5 tabelas, CRUD
-│           └── pdfService.js         # pdf-parse, chunking, RAG
-│
-└── frontend/
-    └── src/
-        ├── App.jsx                   # Auth, studyMode, WelcomeScreen, retomada
-        ├── hooks/
-        │   ├── useChat.js            # Estado, streaming, studyMode
-        │   └── useConversation.js    # Histórico, localStorage, Firestore
-        ├── services/
-        │   ├── api.js                # HTTP, SSE, studyMode, knowledge
-        │   ├── firebase.js           # Auth config
-        │   └── firestoreService.js   # Conversas no Firestore
-        └── components/
-            ├── ChatInput.jsx         # Input, câmera, áudio, Ctrl+V
-            ├── ChatMessage.jsx       # Markdown, KaTeX, TTS, modelo
-            ├── Header.jsx            # Menu, Modo Estudo, voz, fonte
-            ├── ModelSelector.jsx     # Seletor 6 modelos + senha Supremo
-            ├── KnowledgePanel.jsx    # Base de conhecimento + edição
-            ├── Login.jsx             # Auth Firebase
-            └── ConversationList.jsx  # Histórico de conversas
-```
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
 
----
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      
+      let cleanLine = line;
+      if (cleanLine.startsWith("data: ")) {
+        cleanLine = cleanLine.slice(6);
+      }
+      
+      if (!cleanLine.trim() || cleanLine === "[DONE]") continue;
+      if (cleanLine.startsWith("event:")) continue;
+      
+      try {
+        const json = JSON.parse(cleanLine);
+        if (json.type === "content-delta") {
+          const token = json.delta?.message?.content?.text;
+          if (token) yield token;
+        }
+      } catch (e) {
+        console.debug("[Cohere] Parse error:", e.message);
+      }
+    }
+  }
+};
 
-## 🗄️ Banco de Dados (SQLite)
+// ============ ANTHROPIC ============
+const anthropicStream = async function* (modelId, messages, systemPrompt) {
+  const anthropicMessages = messages.filter(m => m.role !== "system").map(m => {
+    if (Array.isArray(m.content)) return m;
+    return { role: m.role, content: m.content };
+  });
 
-| Tabela | Função |
-|--------|--------|
-| `conversations` | Histórico de mensagens por usuário |
-| `sessions` | Controle de sessões ativas |
-| `pdf_context` | Contexto legado (compatibilidade) |
-| `user_memory` | Fatos extraídos automaticamente das conversas |
-| `knowledge_base` | Base de conhecimento — PDFs, TXTs e textos por usuário |
+  const response = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: modelId,
+      system: systemPrompt,
+      messages: anthropicMessages,
+      stream: true,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
 
----
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Claude erro ${response.status}: ${err}`);
+  }
 
-## ⚙️ Variáveis de Ambiente (.env)
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line.replace("data: ", ""));
+        if (json.type === "content_block_delta") {
+          const token = json.delta?.text;
+          if (token) yield token;
+        }
+      } catch {}
+    }
+  }
+};
 
-```env
-PORT=3001
-NODE_ENV=production
-GROQ_API_KEY=gsk_...
-ANTHROPIC_API_KEY=sk-ant-...
-MISTRAL_API_KEY=...
-COHERE_API_KEY=...
-JWT_SECRET=...
-CORS_ORIGIN=https://hermes.olloapp.com.br
-DB_PATH=./hermes.sqlite
-UPLOADS_PATH=./uploads
-```
+// ============ MAIN ============
+export const chatStream = async function* (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) {
+  const systemPrompt = buildSystemPrompt(memory, studyMode);
 
----
+  let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
+  
+  // Lógica de redirecionamento para modelos que NÃO suportam imagens
+  if (image) {
+    const currentProvider = MODELS[selectedKey]?.provider;
+    // Cohere, Mistral e Groq NÃO suportam imagens → redireciona para Especialista
+    if (currentProvider === "cohere" || currentProvider === "mistral" || currentProvider === "groq") {
+      yield `_(📷 ${MODELS[selectedKey]?.name} não suporta imagens — redirecionando para 🔬 Thiago Especialista)_\n\n`;
+      selectedKey = "thiago-especialista";
+    }
+  }
 
-## 🔧 Comandos Essenciais
+  const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
 
-### SSH
-```bash
-ssh -i C:\Users\Home\Downloads\ssh-key-2026-04-23.key ubuntu@147.15.84.45
-```
+  // Função para normalizar content (garante que sempre retorne string)
+  const normalizeContent = (m) => {
+    if (typeof m.content === "string") return m.content;
+    if (Array.isArray(m.content)) {
+      const textContents = m.content.filter(c => c.type === "text" || typeof c === "string");
+      if (textContents.length > 0) {
+        return textContents.map(c => c.text || c).join(" ");
+      }
+      return "[imagem]";
+    }
+    return String(m.content || "");
+  };
 
-### Backend (servidor)
-```bash
-pm2 status
-pm2 restart hermes
-pm2 logs hermes --lines 20 --nostream
-pm2 logs hermes --lines 20 --nostream | grep -i error
-curl -s http://localhost:3001/api/health
-curl -s https://api.hermes.olloapp.com.br/api/health
-```
+  // Limita histórico para modelos com menor contexto
+  const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
+    ? history.filter(m => m.content).slice(-20)
+    : history.filter(m => m.content);
 
-### Enviar arquivo para servidor
-```bash
-scp -i C:\Users\Home\Downloads\ssh-key-2026-04-23.key \
-  C:\hermes-ai-agent\backend\src\services\ollama.js \
-  ubuntu@147.15.84.45:~/hermes/backend/src/services/ollama.js
-```
+  // Monta messages com normalizeContent para TODOS os casos
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...limitedHistory.map(m => ({
+      role: m.role,
+      content: normalizeContent(m)
+    }))
+  ];
 
-### Deploy frontend
-```bash
-cd C:\hermes-ai-agent\frontend
-npm run build && firebase deploy
-```
+  // Adiciona a mensagem do usuário (com ou sem imagem)
+  if (image) {
+    const base64Data = image.includes(",") ? image.split(",")[1] : image;
+    const mimeType = image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg";
+    
+    if (model.provider === "anthropic") {
+      messages.push({
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mimeType, data: base64Data } },
+          { type: "text", text: message || "Analise esta imagem." }
+        ]
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } },
+          { type: "text", text: message || "Analise esta imagem." }
+        ]
+      });
+    }
+  } else {
+    messages.push({ role: "user", content: message || "Ola" });
+  }
 
-### Git
-```bash
-cd C:\hermes-ai-agent
-git add . && git commit -m "mensagem" && git push origin master
-```
+  // FALLBACK INTELIGENTE: Anthropic falha → tenta Mistral
+  if (model.provider === "anthropic") {
+    try {
+      yield* anthropicStream(model.id, messages, systemPrompt);
+    } catch (err) {
+      yield `_(Thiago Doutor indisponivel — usando Thiago Jr como fallback)_\n\n`;
+      yield* mistralStream("mistral-small-latest", messages);
+    }
+  } else if (model.provider === "mistral") {
+    yield* mistralStream(model.id, messages);
+  } else if (model.provider === "cohere") {
+    yield* cohereStream(model.id, messages, systemPrompt);
+  } else {
+    yield* groqStream(model.id, messages);
+  }
+};
 
----
+export const chat = async (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) => {
+  let fullResponse = "";
+  for await (const token of chatStream(message, history, image, modelKey, memory, studyMode)) {
+    fullResponse += token;
+  }
+  return fullResponse || "Sem resposta do modelo.";
+};
 
-## 📊 Limites das APIs Gratuitas
+export const extractMemoryFacts = async (userMessage, assistantResponse) => {
+  try {
+    const response = await fetch(MISTRAL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${MISTRAL_API_KEY}` },
+      body: JSON.stringify({
+        model: "mistral-small-latest",
+        messages: [
+          { role: "system", content: `Voce e um extrator de fatos. Analise a conversa e extraia APENAS fatos pessoais importantes sobre o usuario. Retorne APENAS JSON valido: [{"key":"nome_do_fato","value":"valor"}]. Se nao houver fatos, retorne [].` },
+          { role: "user", content: `Usuario disse: "${userMessage}"\nAssistente respondeu: "${assistantResponse.substring(0, 500)}"` }
+        ],
+        stream: false,
+        temperature: 0.3,
+        max_tokens: 500
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || "[]";
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch { return []; }
+};
 
-| Modelo | Limite | Reset |
-|--------|--------|-------|
-| 🔎 Cohere Analiza (Trial) | Rate limit moderado | — |
-| ⚙️ Mistral Jr (Free) | Rate limit por capacidade | — |
-| 🧠 Groq Sênior (llama-3.3-70b) | 100.000 tokens/dia | 21h Brasília |
-| 🎓 Claude Haiku / Sonnet / Opus | Sem limite diário | Pago por uso |
-
-> ⚠️ **Fallback automático ativo:** Claude falha → Mistral Jr assume automaticamente
-
----
-
-## 🔐 Segurança — Boas Práticas
-
-- ✅ `.env` e `firebase-adminsdk.json` no `.gitignore` — nunca commitados
-- ✅ Repositório **privado** no GitHub
-- ✅ JWT verificado em toda requisição via Firebase Admin SDK
-- ✅ Sanitização XSS em todos os inputs
-- ✅ Rate limiting: 100 req/15min global, 20 req/15min no chat
-- ✅ CORS restrito às origens autorizadas
-- ✅ Helmet.js — headers HTTP de segurança
-- ✅ Firestore Rules — limites por usuário com admin privilegiado
-- ✅ Isolamento total por usuário (userId em todas as queries)
-- ✅ Modelo Supremo protegido por senha
-
-> ⚠️ **NUNCA** compartilhe o IP do servidor, chaves de API ou o `firebase-adminsdk.json` publicamente.
-
----
-
-## 👨‍💻 Autor
-
-**Thiago Fernando**
-Engenheiro da Computação & Desenvolvedor Front-End
-São Paulo, Brasil
-
-GitHub: [Thiago-spba](https://github.com/Thiago-spba)
-Portfolio: [portfolio-thiagosp.vercel.app](https://portfolio-thiagosp.vercel.app)
-
----
-
-*Hermes AI Agent — Infraestrutura privada, dados sob seu controle.*
-
-*Desenvolvido com dedicação por Thiago Fernando.*
+export const checkOllamaHealth = async () => true;
+export const checkWhisperHealth = async () => false;
