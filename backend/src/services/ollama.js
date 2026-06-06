@@ -296,7 +296,8 @@ export const chatStream = async function* (message, history = [], image = null, 
   let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
   if (image && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
     const oldName = MODELS[selectedKey]?.name || selectedKey;
-    selectedKey = "thiago-senior";
+    selectedKey = "thiago-doutor";
+    yield `> 📷 *${oldName} não suporta imagens — redirecionando para 🎓 Thiago Doutor.*\n\n`;
   }
 
   const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
@@ -323,7 +324,7 @@ export const chatStream = async function* (message, history = [], image = null, 
     return result;
   };
   const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
-    ? limitHistoryByTokens(history, 7000)
+    ? limitHistoryByTokens(history, 7000).map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}))
     : history.filter(m => m.content);
 
   const messages = [

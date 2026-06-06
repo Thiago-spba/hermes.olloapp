@@ -14,23 +14,25 @@ router.post("/", auth, validateChat, async (req, res) => {
     const userId = req.user.id
     let finalMessage = message || ""
 
-    // Comando /lembrar
-    if (finalMessage.startsWith('/lembrar ')) {
+    if (finalMessage.startsWith("/lembrar ")) {
       const fact = finalMessage.slice(9).trim()
-      const [key, ...rest] = fact.split(':')
+      const [key, ...rest] = fact.split(":")
       if (key && rest.length) {
-        saveMemory(userId, key.trim(), rest.join(':').trim())
+        saveMemory(userId, key.trim(), rest.join(":").trim())
         res.setHeader("Content-Type", "text/event-stream")
         res.setHeader("Cache-Control", "no-cache")
         res.flushHeaders()
-        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}\n\n`)
-        res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
+        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}
+
+`)
+        res.write(`data: ${JSON.stringify({ done: true })}
+
+`)
         res.end()
         return
       }
     }
 
-    // Transcricao de audio
     if (audio) {
       try {
         const transcribed = await transcribeAudio(audio, audioMime || "audio/webm")
@@ -40,7 +42,6 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    // Base de Conhecimento (RAG) — só ativa quando useRAG=true
     if (!image && useRAG) {
       const allChunks = getKnowledgeChunks(userId)
       if (allChunks.length > 0) {
@@ -57,8 +58,13 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     const sessionHistory = Array.isArray(frontendHistory)
       ? frontendHistory
-          .filter(m => m && typeof m.content === "string" && (m.role === "user" || m.role === "assistant"))
-          .map(m => ({ role: m.role, content: m.content }))
+          .filter(m => m && m.content && (m.role === "user" || m.role === "assistant"))
+          .map(m => ({
+            role: m.role,
+            content: typeof m.content === "string" ? m.content :
+              Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" :
+              String(m.content || "")
+          }))
       : []
 
     res.setHeader("Content-Type", "text/event-stream")
@@ -68,14 +74,17 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     let fullResponse = ""
 
-    // ✅ studyMode passado para o chatStream
     for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory, studyMode || false)) {
       fullResponse += token
-      res.write(`data: ${JSON.stringify({ token })}\n\n`)
+      res.write(`data: ${JSON.stringify({ token })}
+
+`)
     }
 
     saveMessage(userId, "assistant", fullResponse)
-    res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}\n\n`)
+    res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}
+
+`)
     res.end()
 
     if (message && fullResponse && !image) {
@@ -94,7 +103,9 @@ router.post("/", auth, validateChat, async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: error.message })
     } else {
-      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`)
+      res.write(`data: ${JSON.stringify({ error: error.message })}
+
+`)
       res.end()
     }
   }
@@ -139,4 +150,3 @@ router.delete("/history", auth, (req, res) => {
 })
 
 export default router
-
