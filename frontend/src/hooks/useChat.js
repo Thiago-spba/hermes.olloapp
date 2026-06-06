@@ -106,6 +106,12 @@ const useChat = (studyMode = false) => {
         imageBase64,
         (token, done, mk) => {
           fullResponse += token;
+          const fm = fullResponse.match(/continuando com (.+?)\.\*/);
+          if (fm) {
+            const nk = {"Thiago Analiza":"thiago-analiza","Thiago Jr":"thiago-jr","Thiago Senhor":"thiago-senior","Thiago Doutor":"thiago-doutor","Thiago Especialista":"thiago-especialista","Thiago Supremo":"thiago-supremo"};
+            const found = Object.keys(nk).find(k => fm[1].includes(k));
+            if (found) setSelectedModel(nk[found]);
+          }
           setMessages((prev) =>
             prev.map((m) => m.id === aiId ? { ...m, content: fullResponse, ...(mk ? { modelKey: mk } : {}) } : m)
           );
