@@ -51,7 +51,6 @@ export const validateChat = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('[SANITIZE ERROR]', JSON.stringify(errors.array()));
       return res.status(400).json({ 
         error: 'Dados invalidos.', 
         details: errors.array().map(e => e.msg) 
@@ -90,7 +89,6 @@ export const validateLogin = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('[SANITIZE ERROR]', JSON.stringify(errors.array()));
       return res.status(400).json({ 
         error: 'Dados invalidos.', 
         details: errors.array().map(e => e.msg) 
@@ -99,4 +97,3 @@ export const validateLogin = [
     next();
   }
 ];
-// DEBUG TEMPORARIO
