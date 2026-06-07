@@ -19,8 +19,8 @@ export const validateChat = [
     .isString()
     .withMessage('Mensagem deve ser texto.')
     .trim()
-    .isLength({ min: 1, max: 10000 })
-    .withMessage('Mensagem deve ter entre 1 e 10.000 caracteres.')
+    .isLength({ min: 0, max: 10000 })
+    .withMessage('Mensagem muito longa (max 10.000 caracteres).')
     .customSanitizer(value => sanitizeText(value)),
   
   body('audio')
@@ -34,12 +34,6 @@ export const validateChat = [
     .optional()
     .isString()
     .withMessage('Imagem invalida.')
-    .custom(val => {
-      // Aceita base64 puro ou com prefixo data:image/...
-      const isBase64 = /^(data:image\/(jpeg|jpg|png|gif|webp);base64,)?[A-Za-z0-9+/]+=*$/.test(val);
-      if (!isBase64) throw new Error('Formato de imagem invalido. Use base64 JPEG, PNG, GIF ou WebP.');
-      return true;
-    })
     .isLength({ max: 10000000 })
     .withMessage('Imagem muito grande (max 10MB).'),
   
@@ -57,6 +51,7 @@ export const validateChat = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('[SANITIZE ERROR]', JSON.stringify(errors.array()));
       return res.status(400).json({ 
         error: 'Dados invalidos.', 
         details: errors.array().map(e => e.msg) 
@@ -95,6 +90,7 @@ export const validateLogin = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('[SANITIZE ERROR]', JSON.stringify(errors.array()));
       return res.status(400).json({ 
         error: 'Dados invalidos.', 
         details: errors.array().map(e => e.msg) 
@@ -103,3 +99,4 @@ export const validateLogin = [
     next();
   }
 ];
+// DEBUG TEMPORARIO
