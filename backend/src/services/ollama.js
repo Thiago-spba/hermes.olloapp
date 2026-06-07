@@ -323,13 +323,35 @@ export const chatStream = async function* (message, history = [], image = null, 
     }
     return result;
   };
-  const limitedHistory = (model.provider === "groq" || model.provider === "mistral")
-    ? limitHistoryByTokens(history, 7000).map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}))
-    : history.filter(m => m.content);
+  // Normaliza arrays de content para string em TODOS os providers não-Anthropic
+  // Evita erro "content must be a string" quando histórico contém mensagens com imagem
+  const normalizeHistory = (hist, maxTokens = null) => {
+    const filtered = hist.filter(m => m.content);
+    const mapped = filtered.map(m => ({
+      ...m,
+      content: Array.isArray(m.content)
+        ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]"
+        : m.content
+    }));
+    if (!maxTokens) return mapped;
+    let total = 0;
+    const result = [];
+    for (let i = mapped.length - 1; i >= 0; i--) {
+      const tokens = estimateTokens(mapped[i].content);
+      if (total + tokens > maxTokens) break;
+      total += tokens;
+      result.unshift(mapped[i]);
+    }
+    return result;
+  };
+
+  const limitedHistory = model.provider === "anthropic"
+    ? history.filter(m => m.content)
+    : normalizeHistory(history, 7000);
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...limitedHistory.map(m => ({ role: m.role, content: (model.provider === "groq" || model.provider === "mistral") ? normalizeContent(m) : m.content }))
+    ...limitedHistory.map(m => ({ role: m.role, content: m.content }))
   ];
 
   if (image) {
