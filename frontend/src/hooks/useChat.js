@@ -11,6 +11,15 @@ const WELCOME_MESSAGE = {
   time: getTime(),
 };
 
+// Garante que content do histórico é sempre string — nunca array
+const toHistoryString = (content) => {
+  if (!content) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content))
+    return content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]";
+  return String(content);
+};
+
 const useChat = (studyMode = false) => {
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +38,7 @@ const useChat = (studyMode = false) => {
     })));
     setHistory(savedMessages
       .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({ role: m.role, content: m.content }))
+      .map((m) => ({ role: m.role, content: toHistoryString(m.content) }))
     );
   }, []);
 
@@ -39,7 +48,6 @@ const useChat = (studyMode = false) => {
   }, []);
 
   const sendUserMessage = useCallback(async (text, file = null, audio = null, useRAG = false) => {
-    // Conteudo exibido na bolha do usuario
     const displayContent = audio
       ? `${text ? text + "\n\n" : ""}🎙️ Audio`
       : text || "";
@@ -62,10 +70,8 @@ const useChat = (studyMode = false) => {
 
       if (file) {
         if (file.type.startsWith("image/")) {
-          // Imagem: envia como base64 para analise visual
           imageBase64 = file.data;
         } else if (file.type === "application/pdf") {
-          // PDF: extrai texto via backend e envia inline na conversa
           try {
             const base64 = file.data.includes(",") ? file.data.split(",")[1] : file.data;
             const byteChars = atob(base64);
@@ -79,7 +85,6 @@ const useChat = (studyMode = false) => {
             messageText += `\n\n[PDF: ${file.name} - nao foi possivel extrair o texto]`;
           }
         } else {
-          // Outros arquivos de texto/codigo
           try {
             const decoded = atob(file.data.split(",")[1]);
             messageText += `\n\nConteudo de "${file.name}":\n\`\`\`\n${decoded.substring(0, 3000)}\n\`\`\``;
@@ -107,7 +112,7 @@ const useChat = (studyMode = false) => {
         (token, done, mk) => {
           fullResponse += token;
           const nk = {"Thiago Analiza":"thiago-analiza","Thiago Jr":"thiago-jr","Thiago Senhor":"thiago-senior","Thiago Doutor":"thiago-doutor","Thiago Especialista":"thiago-especialista","Thiago Supremo":"thiago-supremo"};
-          const fm = fullResponse.match(/continuando com (.+?)\.*/);
+          const fm = fullResponse.match(/continuando com (.+?)\.*/);;
           if (fm) { const found = Object.keys(nk).find(k => fm[1].includes(k)); if (found) setSelectedModel(nk[found]); }
           const fi = fullResponse.match(/redirecionando para (.+?)\./);
           if (fi) { const found = Object.keys(nk).find(k => fi[1].includes(k)); if (found) setSelectedModel(nk[found]); }
@@ -122,10 +127,13 @@ const useChat = (studyMode = false) => {
         useRAG
       );
 
+      // Sempre salva strings no histórico — nunca arrays
+      const histUser = messageText || displayContent;
+      const histAssistant = typeof response === "string" && response ? response : fullResponse;
       setHistory((prev) => [
         ...prev,
-        { role: "user", content: messageText || displayContent },
-        { role: "assistant", content: response },
+        { role: "user", content: toHistoryString(histUser) },
+        { role: "assistant", content: toHistoryString(histAssistant) },
       ]);
 
     } catch (error) {
