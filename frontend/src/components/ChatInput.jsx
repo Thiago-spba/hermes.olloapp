@@ -494,7 +494,9 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
 };
 
 // ============ CHAT INPUT ============
-const ChatInput = ({ onSend, isLoading, isDark }) => {
+const VISION_MODELS = ["thiago-doutor", "thiago-especialista", "thiago-supremo"];
+
+const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
   const [text, setText] = useState("");
   const [attachedFile, setAttachedFile] = useState(null);
   const [attachedAudio, setAttachedAudio] = useState(null);
@@ -545,6 +547,11 @@ const ChatInput = ({ onSend, isLoading, isDark }) => {
   const handleSend = () => {
     const trimmed = text.trim();
     if ((!trimmed && !attachedFile && !attachedAudio) || isLoading) return;
+    const isImage = attachedFile && attachedFile.type?.startsWith("image/");
+    if (isImage && !VISION_MODELS.includes(selectedModel)) {
+      alert("📷 Este modelo nao suporta imagens.\nUse Thiago Doutor, Especialista ou Supremo.");
+      return;
+    }
     onSend(trimmed, attachedFile, attachedAudio, useRAG);
     setText("");
     setAttachedFile(null);

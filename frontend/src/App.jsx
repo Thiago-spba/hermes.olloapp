@@ -469,6 +469,7 @@ const App = () => {
         onSend={handleSendMessage}
         isLoading={isLoading}
         isDark={isDark}
+        selectedModel={selectedModel}
       />
     </div>
   );
