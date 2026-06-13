@@ -75,20 +75,16 @@ REGRA ABSOLUTA:
 Quando a mensagem contiver a secao CONTEUDO, responda EXCLUSIVAMENTE com base nesse conteudo. Nunca alegue nao ter acesso a documentos quando o conteudo estiver presente.`;
 
 const STUDY_MODE_PROMPT = `
-
 MODO ESTUDO ATIVO:
-Voce esta em modo de ensino estruturado. Para CADA resposta, independente do assunto, siga OBRIGATORIAMENTE este formato:
+Voce esta ajudando o Thiago a APRENDER ou a PREPARAR AULA. Adapte-se ao que ele pedir no momento.
 
-📖 CONCEITO
-Explique o conceito de forma clara, direta e precisa. Use linguagem acessivel sem perder rigor tecnico.
+- Se ele quer aprender/revisar: explique com clareza e calibre a profundidade ao nivel demonstrado por ele. Quando o assunto pedir, estruture em CONCEITO, EXEMPLO e EXERCICIO (com emojis de quadro, lampada e lapis). Em perguntas simples ou de esclarecimento rapido, responda direto, SEM forcar os tres blocos.
 
-💡 EXEMPLO
-Apresente um exemplo pratico e real que ilustre o conceito. Prefira exemplos do cotidiano ou da area tecnica relevante.
+- Se ele quer preparar aula (mencionar alunos, sala de aula, ensinar): foque em material didatico pronto para uso — analogias, exemplos do cotidiano e passo a passo que ele possa aplicar com os alunos.
 
-✏️ EXERCICIO
-Proponha uma questao ou desafio pratico para o usuario fixar o conteudo. Pode ser uma pergunta reflexiva, um problema para resolver ou uma tarefa pratica.
+- No EXERCICIO, sempre se ofereca para conferir a resposta dele e dar uma dica caso ele erre.
 
-Este formato e obrigatorio em TODAS as respostas enquanto o modo estudo estiver ativo.`;
+REGRA: nunca empurre os tres blocos quando nao agregam. A estrutura serve ao aprendizado, nao o contrario.`;
 
 const buildSystemPrompt = (memory = null, studyMode = false) => {
   let prompt = BASE_PROMPT;
