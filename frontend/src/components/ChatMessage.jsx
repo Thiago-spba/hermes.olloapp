@@ -1,7 +1,18 @@
 import { memo, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+
+// Converte delimitadores LaTeX para o formato que o KaTeX entende
+const normalizarLatex = (texto) => {
+  if (!texto) return texto;
+  let t = texto;
+  t = t.replace(/\\\[([\s\S]+?)\\\]/g, function (_, m) { return "$$" + m.trim() + "$$"; });
+  t = t.replace(/\\\(([\s\S]+?)\\\)/g, function (_, m) { return "$" + m.trim() + "$"; });
+  return t;
+};
+
 
 const MODELS_LABEL = {
   "thiago-jr": "⚡ Jr",
@@ -255,7 +266,7 @@ const ChatMessage = memo(({ message, isDark }) => {
                 }}
               >
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[remarkMath, remarkGfm]}
                   rehypePlugins={[[rehypeKatex, { strict: false, throwOnError: false }]]}
                   components={{
                     code({ node, inline, className, children, ...props }) {
@@ -276,7 +287,7 @@ const ChatMessage = memo(({ message, isDark }) => {
                     }
                   }}
                 >
-                  {message.content || ""}
+                  {normalizarLatex(message.content || "")}
                 </ReactMarkdown>
               </div>
             )}
