@@ -24,6 +24,7 @@ const useChat = (studyMode = false) => {
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [activeProject, setActiveProject] = useState(null);
   const [selectedModel, setSelectedModel] = useState(() =>
     localStorage.getItem("hermes-model") || "thiago-doutor"
   );
@@ -124,7 +125,8 @@ const useChat = (studyMode = false) => {
         audioMime,
         selectedModel,
         studyMode,
-        useRAG
+        useRAG,
+        activeProject?.context || ""
       );
 
       // Sempre salva strings no histórico — nunca arrays
@@ -162,7 +164,7 @@ const useChat = (studyMode = false) => {
     setHistory([]);
   }, []);
 
-  return { messages, isLoading, sendUserMessage, clearChat, loadMessages, selectedModel, changeModel };
+  return { messages, isLoading, sendUserMessage, clearChat, loadMessages, selectedModel, changeModel, activeProject, setActiveProject };
 };
 
 export default useChat;
