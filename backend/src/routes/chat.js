@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG } = req.body
+    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -42,7 +42,7 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    if (!image && useRAG) {
+    if (!image && (useRAG || getKnowledgeChunks(userId).length > 0)) {
       const allChunks = getKnowledgeChunks(userId)
       if (allChunks.length > 0) {
         const query = finalMessage || "resuma"
@@ -50,6 +50,10 @@ router.post("/", auth, validateChat, async (req, res) => {
         const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
         finalMessage = `${query}\n\n<context>${relevant}</context>`
       }
+    }
+
+    if (projectContext && projectContext.trim()) {
+      finalMessage = `${finalMessage}\n\n<projeto_ativo>${projectContext}</projeto_ativo>`
     }
 
     const memory = getMemoryAsText(userId)

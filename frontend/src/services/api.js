@@ -27,7 +27,7 @@ const authHeaders = async (json = false) => {
   return headers
 }
 
-export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false, useRAG = false) => {
+export const sendMessage = async (message, history = [], image = null, onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false, useRAG = false, projectContext = "") => {
   const headers = await authHeaders(true)
   const response = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
@@ -41,6 +41,7 @@ export const sendMessage = async (message, history = [], image = null, onToken =
       modelKey,
       studyMode: studyMode || false,
       useRAG: useRAG || false,
+      ...(projectContext && { projectContext }),
     }),
   })
 
@@ -79,8 +80,8 @@ export const sendMessage = async (message, history = [], image = null, onToken =
 export const uploadPDF = async (file) => {
   const headers = await authHeaders(false)
   const formData = new FormData()
-  formData.append("pdf", file)
-  const response = await fetch(`${API_URL}/api/upload/pdf`, {
+  formData.append("file", file)
+  const response = await fetch(`${API_URL}/api/knowledge`, {
     method: "POST", headers, body: formData,
   })
   if (!response.ok) throw new Error((await response.json()).error || `Erro ${response.status}`)
@@ -114,8 +115,8 @@ export const uploadKnowledge = async (files) => {
   for (const file of files) {
     try {
       const formData = new FormData()
-      formData.append("pdf", file)
-      const response = await fetch(`${API_URL}/api/upload/pdf`, { method: "POST", headers, body: formData })
+      formData.append("file", file)
+      const response = await fetch(`${API_URL}/api/knowledge`, { method: "POST", headers, body: formData })
       if (!response.ok) throw new Error("Erro ao fazer upload")
       results.uploaded.push(file.name)
     } catch { results.errors.push(file.name) }

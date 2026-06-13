@@ -202,6 +202,8 @@ const App = () => {
     loadMessages,
     selectedModel,
     changeModel,
+    activeProject,
+    setActiveProject,
   } = useChat(studyMode);
   const showWelcomeScreen =
     !isLoading && messages.filter((m) => m.role === "user").length === 0;
@@ -328,11 +330,8 @@ const App = () => {
   };
 
   const handleSelectProject = (project) => {
-    sendUserMessage(
-      `Vou te falar sobre meu projeto "${project.name}". ${project.description ? project.description + ". " : ""}${project.context ? "Detalhes: " + project.context : ""}`,
-      null,
-      null,
-    );
+    setActiveProject(project);
+    setShowProjects(false);
   };
 
   const handleSendMessage = (text, file, audio, useRAG) => {
@@ -394,6 +393,25 @@ const App = () => {
         studyMode={studyMode}
         onToggleStudyMode={setStudyMode}
       />
+      {activeProject && (
+        <div
+          style={{
+            ...styles.studyBanner,
+            backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
+            borderColor: isDark ? "#143d2e" : "#b0ddd4",
+            color: isDark ? "#00e5ff" : "#0099bb",
+          }}
+        >
+          <span>📁</span>
+          <span style={{ fontWeight: "600" }}>Projeto ativo: {activeProject.name}</span>
+          <button
+            onClick={() => setActiveProject(null)}
+            style={styles.studyBannerClose}
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {studyMode && (
         <div
           style={{

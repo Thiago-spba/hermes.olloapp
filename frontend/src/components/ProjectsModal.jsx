@@ -102,7 +102,7 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject, userId }) => {
         name: form.name,
         description: form.description,
         context: form.context,
-        pdfText: form.pdfText || "",
+        pdfText: (form.pdfText || "").substring(0, 30000),
         pdfName: form.pdfName || "",
         ...(editing ? { id: editing } : {}),
       };
@@ -676,4 +676,5 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject, userId }) => {
 };
 
 export default ProjectsModal;
+
 

@@ -3,3 +3,5 @@ firebase-adminsdk.json
 node_modules/
 dist/
 *.sqlite
+
+frontend/fix_api.js
