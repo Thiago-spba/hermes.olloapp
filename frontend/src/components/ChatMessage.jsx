@@ -99,12 +99,16 @@ const FileCard = ({ file, isDark }) => {
           src={file.data}
           alt={file.name}
           style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "6px",
-            objectFit: "cover",
+            maxWidth: "220px",
+            maxHeight: "220px",
+            width: "auto",
+            height: "auto",
+            borderRadius: "8px",
+            objectFit: "contain",
             flexShrink: 0,
+            cursor: "pointer",
           }}
+          onClick={() => window.open(file.data, "_blank")}
         />
       ) : isPDF ? (
         <div
