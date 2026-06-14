@@ -8,7 +8,7 @@ import AudioPreview from "./AudioPreview";
 const Heartbeat = ({ isDark }) => {
   const color = isDark ? "#00e5ff" : "#00c896";
   return (
-    <div style={{ flex: 1, height: "40px", overflow: "hidden" }}>
+    <div style={{ flex: 1, height: "40px", overflow: "hidden", WebkitMaskImage: "linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)", maskImage: "linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)" }}>
       <style>{`
         @keyframes ecgScroll {
           0% { transform: translateX(0); }
@@ -32,7 +32,7 @@ const Heartbeat = ({ isDark }) => {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+          style={{ filter: `drop-shadow(0 0 4px ${color})`, animation: "ecgGlow 1.8s ease-in-out infinite" }}
         />
       </svg>
     </div>
@@ -537,8 +537,13 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
     setText(e.target.value);
     adjustHeight(e.target);
   };
+  const isMobile =
+    typeof navigator !== "undefined" &&
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // No celular o Enter pula linha; envio so pelo botao.
+    // No desktop o Enter envia e Shift+Enter pula linha.
+    if (e.key === "Enter" && !e.shiftKey && !isMobile) {
       e.preventDefault();
       handleSend();
     }
@@ -819,6 +824,7 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
           <button
             onClick={handleSend}
             disabled={isLoading || !hasContent}
+            className="hermes-send-btn"
             style={{
               ...styles.sendButton,
               background:
@@ -864,9 +870,9 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
 const styles = {
   container: {
     padding: "12px 16px",
+    paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
     borderTop: "1px solid",
-    position: "sticky",
-    bottom: 0,
+    flexShrink: 0,
     transition: "background-color 0.3s ease",
   },
   inputWrapper: {

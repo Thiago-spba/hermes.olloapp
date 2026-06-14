@@ -42,7 +42,7 @@ const MD_STYLES = `
 `;
 
 const ECGLine = () => (
-  <div style={{ width: "100%", height: "48px", overflow: "hidden" }}>
+  <div style={{ width: "100%", height: "48px", overflow: "hidden", WebkitMaskImage: "linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)", maskImage: "linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)" }}>
     <style>{`
       @keyframes ecgScroll {
         0% { transform: translateX(0); }
@@ -66,7 +66,7 @@ const ECGLine = () => (
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ filter: "drop-shadow(0 0 4px #00e5aa)" }}
+        style={{ filter: "drop-shadow(0 0 4px #00e5aa)", animation: "ecgGlow 1.8s ease-in-out infinite" }}
       />
     </svg>
   </div>
@@ -396,6 +396,7 @@ const styles = {
     gap: "8px",
     marginBottom: "12px",
     padding: "0 12px",
+    animation: "msgIn 0.35s ease both",
   },
   avatar: {
     width: "28px",

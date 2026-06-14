@@ -507,6 +507,7 @@ const styles = {
   },
   main: {
     flex: 1,
+    minHeight: 0,
     overflowY: "auto",
     padding: "16px",
     paddingBottom: "8px",
