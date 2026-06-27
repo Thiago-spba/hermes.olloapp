@@ -34,7 +34,7 @@ const MD_STYLES = `
   .hermes-md pre code { background: none; padding: 0; }
   .hermes-md h1, .hermes-md h2, .hermes-md h3 { margin: 8px 0 4px 0; }
   .hermes-md blockquote { border-left: 3px solid #00e5aa; padding-left: 10px; margin: 6px 0; opacity: 0.8; }
-  .hermes-md table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  .hermes-md .table-wrap { overflow-x: auto; margin: 8px 0; -webkit-overflow-scrolling: touch; } .hermes-md table { border-collapse: collapse; width: 100%; margin: 0; }
   .hermes-md th, .hermes-md td { border: 1px solid rgba(0,229,170,0.2); padding: 6px 10px; font-size: 0.9em; }
   .hermes-md th { background: rgba(0,229,170,0.1); }
   .hermes-md .katex-display { overflow-x: auto; margin: 8px 0; }
@@ -288,8 +288,9 @@ const ChatMessage = memo(({ message, isDark }) => {
                           <pre style={{ margin: 0, padding: "14px", background: "rgba(0,0,0,0.25)", overflowX: "auto" }}><code className={className} {...props}>{children}</code></pre>
                         </div>
                       );
-                    }
-                  }}
+                    },
+                      table({ children }) { return <div className="table-wrap">{children}</div>; }
+                    }}
                 >
                   {normalizarLatex(message.content || "")}
                 </ReactMarkdown>
@@ -425,3 +426,8 @@ const styles = {
 };
 
 export default ChatMessage;
+
+
+
+
+
