@@ -442,7 +442,9 @@ const Header = ({
                   border: `1px solid ${c.border}`,
                   borderRadius: "16px",
                   width: "260px",
-                  overflow: "hidden",
+                  maxHeight: "calc(100vh - 60px)",
+                  overflowY: "auto",
+                  overflowX: "hidden",
                   boxShadow: isDark
                     ? "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,229,255,0.05)"
                     : "0 16px 48px rgba(0,0,0,0.15)",
