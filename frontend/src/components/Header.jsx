@@ -9,6 +9,7 @@ const Header = ({
   onHistoryClick,
   onProjectsClick,
   onKnowledgeClick,
+  onNotebookClick,
   studyMode, // ✅ ADICIONADO
   onToggleStudyMode, // ✅ ADICIONADO
 }) => {
@@ -126,6 +127,15 @@ const Header = ({
   ];
 
   const sections = [
+    {
+      id: "notebook",
+      icon: "\ud83d\udcd3",
+      label: "Caderno de Notas",
+      action: () => {
+        onNotebookClick?.();
+        setMenuOpen(false);
+      },
+    },
     {
       id: "knowledge",
       icon: "🧠",

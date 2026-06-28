@@ -10,6 +10,7 @@ import ConversationList from "./components/ConversationList";
 import ModelSelector from "./components/ModelSelector";
 import ProjectsModal from "./components/ProjectsModal";
 import KnowledgePanel from "./components/KnowledgePanel";
+import NotebookPanel from "./components/NotebookPanel";
 import useChat from "./hooks/useChat";
 import useConversation from "./hooks/useConversation";
 import { checkHealth } from "./services/api";
@@ -169,6 +170,7 @@ const App = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showKnowledge, setShowKnowledge] = useState(false);
+  const [showNotebook, setShowNotebook] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
   const mainRef = useRef(null);
   const isUserScrolling = useRef(false);
@@ -381,6 +383,13 @@ const App = () => {
           onClose={() => setShowKnowledge(false)}
         />
       )}
+      {showNotebook && (
+        <NotebookPanel
+          isDark={isDark}
+          onClose={() => setShowNotebook(false)}
+          userId={user?.uid}
+        />
+      )}
       <Header
         isConnected={isConnected}
         isDark={isDark}
@@ -390,6 +399,7 @@ const App = () => {
         onHistoryClick={handleHistoryClick}
         onProjectsClick={() => setShowProjects(true)}
         onKnowledgeClick={() => setShowKnowledge(true)}
+        onNotebookClick={() => setShowNotebook(true)}
         studyMode={studyMode}
         onToggleStudyMode={setStudyMode}
       />
