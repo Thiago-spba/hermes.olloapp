@@ -15,7 +15,7 @@ export const MODELS = {
   "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
   "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
   "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
-  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5",        name: "🎓 Thiago Doutor",       free: false },
+  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5-20251001",        name: "🎓 Thiago Doutor",       free: false },
   "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",       name: "🔬 Thiago Especialista", free: false },
   "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",         name: "👑 Thiago Supremo",      free: false },
 };
@@ -106,7 +106,7 @@ REGRA: nunca empurre os tres blocos quando nao agregam. A estrutura serve ao apr
 const buildSystemPrompt = (memory = null, studyMode = false) => {
   let prompt = BASE_PROMPT;
   if (studyMode) prompt += STUDY_MODE_PROMPT;
-  if (memory) prompt += `\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}`;
+  if (memory) prompt += `\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}\n\nIMPORTANTE: use essas informacoes para ajustar SILENCIOSAMENTE seu jeito de explicar (ex: evitar contas mentais complexas, ir direto ao ponto, usar exemplos praticos). NUNCA mencione, cite ou comente essas informacoes na resposta (nao diga "sei que voce tem dificuldade com X" ou similar), a menos que o Thiago pergunte diretamente sobre isso. Aja naturalmente, sem expor que sabe.`;
   return prompt;
 };
 
@@ -401,6 +401,7 @@ export const chatStream = async function* (message, history = [], image = null, 
     try {
       yield* anthropicStream(model.id, messages, systemPrompt);
     } catch (err) {
+      console.error("[ANTHROPIC ERROR]", err.message || err);
       yield `_(Thiago Doutor indisponivel — usando Thiago Jr como fallback)_\n\n`;
       yield* mistralStream("mistral-small-latest", messages);
     }
