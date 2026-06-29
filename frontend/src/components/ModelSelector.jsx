@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { MODELS } from "../services/api";
+import { MODELS, API_URL } from "../services/api";
 
-const SUPREMO_PASSWORD = "Onze.12";
 
 const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
   const [open, setOpen] = useState(false);
@@ -31,13 +30,24 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
     }
   };
 
-  const handlePasswordConfirm = () => {
-    if (password === SUPREMO_PASSWORD) {
-      onModelChange("thiago-supremo");
-      setShowPasswordModal(false);
-      setPassword("");
-      setPasswordError(false);
-    } else {
+  const handlePasswordConfirm = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify-supremo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await response.json();
+      if (data.valid) {
+        onModelChange("thiago-supremo");
+        setShowPasswordModal(false);
+        setPassword("");
+        setPasswordError(false);
+      } else {
+        setPasswordError(true);
+        setPassword("");
+      }
+    } catch (err) {
       setPasswordError(true);
       setPassword("");
     }

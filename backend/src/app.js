@@ -7,6 +7,7 @@ import { createRequire } from 'module'
 import admin from 'firebase-admin'
 import corsMiddleware from './middleware/cors.js'
 import authRoutes from './routes/auth.js'
+import verifySupremoRoutes from './routes/verifySupremo.js'
 import chatRoutes from './routes/chat.js'
 import db, { initDatabase, saveKnowledge, getKnowledgeList, deleteKnowledge as dbDeleteKnowledge, clearKnowledge as dbClearKnowledge } from './services/database.js'
 import { checkOllamaHealth } from './services/ollama.js'
@@ -23,6 +24,7 @@ app.use(helmet(), corsMiddleware, express.json({ limit: '200mb' }), express.urle
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))
 app.use('/api/chat', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }))
 app.use('/api/auth', authRoutes)
+app.use('/api/auth', verifySupremoRoutes)
 app.use('/api/chat', chatRoutes)
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }))
