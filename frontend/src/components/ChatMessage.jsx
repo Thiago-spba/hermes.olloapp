@@ -255,9 +255,17 @@ const ChatMessage = memo(({ message, isDark }) => {
           <ECGLine />
         ) : (
           <>
-            {/* Card do arquivo anexado — só na mensagem do usuário */}
-            {isUser && message.file && (
-              <FileCard file={message.file} isDark={isDark} />
+            {/* Card(s) do arquivo anexado — só na mensagem do usuário */}
+            {isUser && message.files?.length > 1 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {message.files.map((f, i) => (
+                  <FileCard key={`${f.name}-${i}`} file={f} isDark={isDark} />
+                ))}
+              </div>
+            ) : (
+              isUser && message.file && (
+                <FileCard file={message.file} isDark={isDark} />
+              )
             )}
 
             {/* Texto da mensagem — oculta se só tem arquivo sem texto */}

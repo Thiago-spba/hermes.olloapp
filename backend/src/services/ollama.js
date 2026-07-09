@@ -308,11 +308,12 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
 };
 
 // ============ MAIN ============
-export const chatStream = async function* (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) {
+export const chatStream = async function* (message, history = [], images = [], modelKey = "auto", memory = null, studyMode = false) {
   const systemPrompt = buildSystemPrompt(memory, studyMode);
+  const imageList = (Array.isArray(images) ? images : images ? [images] : []).slice(0, 5).filter(Boolean);
 
   let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
-  if (image && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
+  if (imageList.length && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
     const oldName = MODELS[selectedKey]?.name || selectedKey;
     selectedKey = "thiago-doutor";
     yield `> 📷 *${oldName} não suporta imagens — redirecionando para 🎓 Thiago Doutor.*\n\n`;
@@ -372,25 +373,24 @@ export const chatStream = async function* (message, history = [], image = null, 
     ...limitedHistory.map(m => ({ role: m.role, content: m.content }))
   ];
 
-  if (image) {
-    const base64Data = image.includes(",") ? image.split(",")[1] : image;
-    const mimeType = image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg";
+  if (imageList.length) {
+    const parseImage = (image) => ({
+      base64Data: image.includes(",") ? image.split(",")[1] : image,
+      mimeType: image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg",
+    });
+    const textBlock = { type: "text", text: message || (imageList.length > 1 ? "Analise estas imagens." : "Analise esta imagem.") };
     if (model.provider === "anthropic") {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mimeType, data: base64Data } },
-          { type: "text", text: message || "Analise esta imagem." }
-        ]
+      const imageBlocks = imageList.map((img) => {
+        const { base64Data, mimeType } = parseImage(img);
+        return { type: "image", source: { type: "base64", media_type: mimeType, data: base64Data } };
       });
+      messages.push({ role: "user", content: [...imageBlocks, textBlock] });
     } else {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } },
-          { type: "text", text: message || "Analise esta imagem." }
-        ]
+      const imageBlocks = imageList.map((img) => {
+        const { base64Data, mimeType } = parseImage(img);
+        return { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } };
       });
+      messages.push({ role: "user", content: [...imageBlocks, textBlock] });
     }
   } else {
     messages.push({ role: "user", content: message || "Ola" });
@@ -442,7 +442,7 @@ export const chatStream = async function* (message, history = [], image = null, 
     }
     if (!success) {
       const currentIndex = FALLBACK_QUEUE.indexOf(selectedKey);
-      const hasImage = image !== null;
+      const hasImage = imageList.length > 0;
       let nextIndex = hasImage ? FALLBACK_QUEUE.indexOf("thiago-doutor") : currentIndex + 1;
       if (nextIndex < 0 || nextIndex >= FALLBACK_QUEUE.length) {
         yield `> ⚠️ *Todos os modelos estão no limite. Tente em alguns minutos.*\n\n`;
@@ -460,9 +460,9 @@ export const chatStream = async function* (message, history = [], image = null, 
   }
 };
 
-export const chat = async (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) => {
+export const chat = async (message, history = [], images = [], modelKey = "auto", memory = null, studyMode = false) => {
   let fullResponse = "";
-  for await (const token of chatStream(message, history, image, modelKey, memory, studyMode)) {
+  for await (const token of chatStream(message, history, images, modelKey, memory, studyMode)) {
     fullResponse += token;
   }
   return fullResponse || "Sem resposta do modelo.";

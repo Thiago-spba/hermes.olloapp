@@ -495,10 +495,11 @@ const CameraModal = ({ onCapture, onClose, isDark }) => {
 
 // ============ CHAT INPUT ============
 const VISION_MODELS = ["thiago-doutor", "thiago-especialista", "thiago-supremo"];
+const MAX_IMAGES = 5;
 
 const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
   const [text, setText] = useState("");
-  const [attachedFile, setAttachedFile] = useState(null);
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [attachedAudio, setAttachedAudio] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
@@ -549,32 +550,50 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
     }
   };
 
+  // Anexa arquivos novos. PDF/texto/codigo sempre substitui (anexo unico).
+  // Imagens se acumulam com as ja anexadas, ate MAX_IMAGES.
+  const addFiles = (newFiles) => {
+    if (!newFiles || !newFiles.length) return;
+    setAttachedAudio(null);
+    const allNewAreImages = newFiles.every((f) => f.type?.startsWith("image/"));
+    if (!allNewAreImages) {
+      setAttachedFiles(newFiles.slice(0, 1));
+      return;
+    }
+    setAttachedFiles((prev) => {
+      const prevAllImages = prev.length > 0 && prev.every((f) => f.type?.startsWith("image/"));
+      const base = prevAllImages ? prev : [];
+      return [...base, ...newFiles].slice(0, MAX_IMAGES);
+    });
+  };
+
+  const removeFileAt = (index) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSend = () => {
     const trimmed = text.trim();
-    if ((!trimmed && !attachedFile && !attachedAudio) || isLoading) return;
-    const isImage = attachedFile && attachedFile.type?.startsWith("image/");
-    if (isImage && !VISION_MODELS.includes(selectedModel)) {
+    if ((!trimmed && !attachedFiles.length && !attachedAudio) || isLoading) return;
+    const hasImage = attachedFiles.some((f) => f.type?.startsWith("image/"));
+    if (hasImage && !VISION_MODELS.includes(selectedModel)) {
       alert("📷 Este modelo nao suporta imagens.\nUse Thiago Doutor, Especialista ou Supremo.");
       return;
     }
-    onSend(trimmed, attachedFile, attachedAudio, useRAG);
+    onSend(trimmed, attachedFiles, attachedAudio, useRAG);
     setText("");
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setAttachedAudio(null);
     setShowTools(false);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
-  const hasContent = text.trim() || attachedFile || attachedAudio;
+  const hasContent = text.trim() || attachedFiles.length > 0 || attachedAudio;
 
   return (
     <>
       {showCamera && (
         <CameraModal
-          onCapture={(f) => {
-            setAttachedFile(f);
-            setAttachedAudio(null);
-          }}
+          onCapture={(f) => addFiles([f])}
           onClose={() => setShowCamera(false)}
           isDark={isDark}
         />
@@ -590,20 +609,25 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
           }}
           onDrop={(e) => {
             e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (ev) => {
-                setAttachedFile({
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                  icon: "📄",
-                  data: ev.target.result,
-                });
-                setAttachedAudio(null);
-              };
-              reader.readAsDataURL(file);
+            const files = Array.from(e.dataTransfer.files || []);
+            if (files.length) {
+              Promise.all(
+                files.map(
+                  (file) =>
+                    new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onload = (ev) =>
+                        resolve({
+                          name: file.name,
+                          type: file.type,
+                          size: file.size,
+                          icon: file.type?.startsWith("image/") ? "🖼️" : "📄",
+                          data: ev.target.result,
+                        });
+                      reader.readAsDataURL(file);
+                    })
+                )
+              ).then(addFiles);
             }
             setIsDragging(false);
           }}
@@ -631,12 +655,17 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
           borderTopColor: isDark ? "#143d2e" : "#b0ddd4",
         }}
       >
-        {attachedFile && (
-          <FilePreview
-            file={attachedFile}
-            onRemove={() => setAttachedFile(null)}
-            isDark={isDark}
-          />
+        {attachedFiles.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            {attachedFiles.map((f, i) => (
+              <FilePreview
+                key={`${f.name}-${i}`}
+                file={f}
+                onRemove={() => removeFileAt(i)}
+                isDark={isDark}
+              />
+            ))}
+          </div>
         )}
         {attachedAudio && (
           <AudioPreview
@@ -692,14 +721,14 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
                 }}>
                   {/* ANEXAR */}
                   <FileAttachment
-                    onFileSelect={(f) => { setAttachedFile(f); setAttachedAudio(null); setShowTools(false); }}
+                    onFileSelect={(files) => { addFiles(files); setShowTools(false); }}
                     isDark={isDark}
-                    disabled={isLoading || !!attachedAudio}
+                    disabled={isLoading || !!attachedAudio || attachedFiles.length >= MAX_IMAGES}
                     showLabel={true}
                   />
                   {/* CAMERA */}
-                  <div onClick={() => { if (!isLoading && !attachedFile && !attachedAudio) { setShowCamera(true); setShowTools(false); } }}
-                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "8px", cursor: "pointer", opacity: isLoading || !!attachedFile || !!attachedAudio ? 0.4 : 1 }}
+                  <div onClick={() => { if (!isLoading && attachedFiles.length < MAX_IMAGES && !attachedAudio) { setShowCamera(true); setShowTools(false); } }}
+                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 8px", borderRadius: "8px", cursor: "pointer", opacity: isLoading || attachedFiles.length >= MAX_IMAGES || !!attachedAudio ? 0.4 : 1 }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? "#143d2e" : "#f0faf7"}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = "transparent"}>
                     <span style={{ fontSize: "18px" }}>📷</span>
@@ -742,9 +771,9 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
             {/* SETA + MICROFONE */}
             <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
               <AudioRecorder
-                onAudioReady={(a) => { setAttachedAudio(a); setAttachedFile(null); }}
+                onAudioReady={(a) => { setAttachedAudio(a); setAttachedFiles([]); }}
                 isDark={isDark}
-                disabled={isLoading || !!attachedFile}
+                disabled={isLoading || attachedFiles.length > 0}
               />
               <button
                 onClick={() => setShowTools(v => !v)}
@@ -785,30 +814,34 @@ const ChatInput = ({ onSend, isLoading, isDark, selectedModel }) => {
               onPaste={(e) => {
                 const items = e.clipboardData?.items;
                 if (!items) return;
-                for (const item of items) {
-                  if (item.type.startsWith("image/")) {
-                    e.preventDefault();
-                    const file = item.getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      setAttachedFile({
-                        name: "imagem_colada.png",
-                        type: file.type,
-                        size: file.size,
-                        icon: "🖼️",
-                        data: ev.target.result,
-                      });
-                      setAttachedAudio(null);
-                    };
-                    reader.readAsDataURL(file);
-                    break;
-                  }
-                }
+                const imageFiles = Array.from(items)
+                  .filter((item) => item.type.startsWith("image/"))
+                  .map((item) => item.getAsFile())
+                  .filter(Boolean);
+                if (!imageFiles.length) return;
+                e.preventDefault();
+                Promise.all(
+                  imageFiles.map(
+                    (file, i) =>
+                      new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) =>
+                          resolve({
+                            name: `imagem_colada_${i + 1}.png`,
+                            type: file.type,
+                            size: file.size,
+                            icon: "🖼️",
+                            data: ev.target.result,
+                          });
+                        reader.readAsDataURL(file);
+                      })
+                  )
+                ).then(addFiles);
               }}
               placeholder={
                 attachedAudio
                   ? "Adicione contexto ao audio..."
-                  : attachedFile
+                  : attachedFiles.length > 0
                     ? "Pergunte sobre o arquivo..."
                     : "Digite sua mensagem..."
               }

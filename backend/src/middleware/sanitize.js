@@ -30,12 +30,16 @@ export const validateChat = [
     .isLength({ max: 5000000 })
     .withMessage('Audio muito grande (max 5MB).'),
   
-  body('image')
+  body('images')
     .optional()
+    .isArray({ max: 5 })
+    .withMessage('Maximo de 5 imagens por mensagem.'),
+
+  body('images.*')
     .isString()
     .withMessage('Imagem invalida.')
     .isLength({ max: 10000000 })
-    .withMessage('Imagem muito grande (max 10MB).'),
+    .withMessage('Cada imagem deve ter no maximo 10MB.'),
   
   body('modelKey')
     .optional()

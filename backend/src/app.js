@@ -27,10 +27,10 @@ app.use(helmet(), corsMiddleware)
 // 200mb valia pra toda a API — vetor de DoS (qualquer rota aceitava payload gigante).
 // Rotas que de fato recebem audio/imagem/texto longo (base64) ganham limite maior;
 // o resto (login, verify-supremo, etc.) fica com um limite pequeno por padrao.
-const bigBody = express.json({ limit: '25mb' })
-const bigUrlencoded = express.urlencoded({ extended: true, limit: '25mb' })
-app.use('/api/chat', bigBody, bigUrlencoded)
-app.use('/api/knowledge', bigBody, bigUrlencoded)
+// /api/chat aceita ate 5 imagens de 10mb cada (ver sanitize.js) + texto,
+// entao precisa de bem mais margem que o resto da API
+app.use('/api/chat', express.json({ limit: '60mb' }), express.urlencoded({ extended: true, limit: '60mb' }))
+app.use('/api/knowledge', express.json({ limit: '25mb' }), express.urlencoded({ extended: true, limit: '25mb' }))
 app.use(express.json({ limit: '2mb' }))
 app.use(express.urlencoded({ extended: true, limit: '2mb' }))
 

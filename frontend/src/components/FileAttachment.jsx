@@ -23,6 +23,15 @@ const ACCEPTED_TYPES = {
 
 const MAX_SIZE_MB = 200;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const MAX_IMAGES = 5;
+
+const readAsDataURL = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
 const FileAttachment = ({
   onFileSelect,
@@ -33,27 +42,51 @@ const FileAttachment = ({
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const processFile = (file) => {
-    if (!file) return;
-    if (!ACCEPTED_TYPES[file.type]) {
-      alert(`Tipo de arquivo não suportado: ${file.type}`);
+  // Aceita varias imagens de uma vez (ate MAX_IMAGES); qualquer outro tipo
+  // (PDF, texto, codigo) continua sendo tratado como anexo unico
+  const processFiles = async (fileList) => {
+    const files = Array.from(fileList || []).filter((f) => ACCEPTED_TYPES[f.type]);
+    if (!files.length) {
+      if (fileList?.length) alert("Tipo de arquivo não suportado.");
       return;
     }
-    if (file.size > MAX_SIZE_BYTES) {
+    const oversized = files.find((f) => f.size > MAX_SIZE_BYTES);
+    if (oversized) {
       alert(`Arquivo muito grande. Máximo: ${MAX_SIZE_MB}MB`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      onFileSelect({
+
+    const allImages = files.every((f) => f.type.startsWith("image/"));
+
+    if (allImages && files.length > 1) {
+      const limited = files.slice(0, MAX_IMAGES);
+      if (files.length > MAX_IMAGES) {
+        alert(`Maximo de ${MAX_IMAGES} imagens por vez. Usando as primeiras ${MAX_IMAGES}.`);
+      }
+      const loaded = await Promise.all(
+        limited.map(async (file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          icon: ACCEPTED_TYPES[file.type],
+          data: await readAsDataURL(file),
+        }))
+      );
+      onFileSelect(loaded);
+      return;
+    }
+
+    const file = files[0];
+    const data = await readAsDataURL(file);
+    onFileSelect([
+      {
         name: file.name,
         type: file.type,
         size: file.size,
         icon: ACCEPTED_TYPES[file.type],
-        data: e.target.result,
-      });
-    };
-    reader.readAsDataURL(file);
+        data,
+      },
+    ]);
   };
 
   const handleClick = () => {
@@ -61,7 +94,7 @@ const FileAttachment = ({
   };
 
   const handleFileChange = (e) => {
-    processFile(e.target.files[0]);
+    processFiles(e.target.files);
     e.target.value = "";
   };
 
@@ -75,7 +108,7 @@ const FileAttachment = ({
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    if (!disabled) processFile(e.dataTransfer.files[0]);
+    if (!disabled) processFiles(e.dataTransfer.files);
   };
 
   return (
@@ -83,6 +116,7 @@ const FileAttachment = ({
       <input
         ref={inputRef}
         type="file"
+        multiple
         accept={Object.keys(ACCEPTED_TYPES).join(",")}
         onChange={handleFileChange}
         style={{ display: "none" }}

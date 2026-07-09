@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext } = req.body
+    const { message, images, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -42,7 +42,9 @@ router.post("/", auth, validateChat, async (req, res) => {
       }
     }
 
-    if (!image && (useRAG || getKnowledgeChunks(userId).length > 0)) {
+    const imageList = Array.isArray(images) ? images.slice(0, 5) : []
+
+    if (!imageList.length && (useRAG || getKnowledgeChunks(userId).length > 0)) {
       const allChunks = getKnowledgeChunks(userId)
       if (allChunks.length > 0) {
         const query = finalMessage || "resuma"
@@ -78,7 +80,7 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     let fullResponse = ""
 
-    for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory, studyMode || false)) {
+    for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
       fullResponse += token
       res.write(`data: ${JSON.stringify({ token })}
 
@@ -91,7 +93,7 @@ router.post("/", auth, validateChat, async (req, res) => {
 `)
     res.end()
 
-    if (message && fullResponse && !image) {
+    if (message && fullResponse && !imageList.length) {
       extractMemoryFacts(message, fullResponse).then(facts => {
         for (const fact of facts) {
           if (fact.key && fact.value) {

@@ -48,13 +48,14 @@ const useChat = (studyMode = false) => {
     localStorage.setItem("hermes-model", modelKey);
   }, []);
 
-  const sendUserMessage = useCallback(async (text, file = null, audio = null, useRAG = false) => {
+  const sendUserMessage = useCallback(async (text, files = [], audio = null, useRAG = false) => {
+    const fileList = Array.isArray(files) ? files : files ? [files] : [];
     const displayContent = audio
       ? `${text ? text + "\n\n" : ""}🎙️ Audio`
       : text || "";
 
     setMessages((prev) => [...prev, {
-      id: Date.now(), role: "user", content: displayContent, time: getTime(), file: file || null,
+      id: Date.now(), role: "user", content: displayContent, time: getTime(), file: fileList[0] || null, files: fileList,
     }]);
     setIsLoading(true);
 
@@ -64,15 +65,17 @@ const useChat = (studyMode = false) => {
     }]);
 
     try {
-      let imageBase64 = null;
+      let imagesBase64 = [];
       let audioBase64 = null;
       let audioMime = null;
       let messageText = text || "";
 
-      if (file) {
-        if (file.type.startsWith("image/")) {
-          imageBase64 = file.data;
-        } else if (file.type === "application/pdf") {
+      const imageFiles = fileList.filter((f) => f.type?.startsWith("image/"));
+      if (imageFiles.length) {
+        imagesBase64 = imageFiles.map((f) => f.data);
+      } else if (fileList[0]) {
+        const file = fileList[0];
+        if (file.type === "application/pdf") {
           try {
             const base64 = file.data.includes(",") ? file.data.split(",")[1] : file.data;
             const byteChars = atob(base64);
@@ -109,7 +112,7 @@ const useChat = (studyMode = false) => {
       const response = await sendMessage(
         messageText || displayContent,
         history,
-        imageBase64,
+        imagesBase64,
         (token, done, mk) => {
           fullResponse += token;
           const nk = {"Thiago Analiza":"thiago-analiza","Thiago Jr":"thiago-jr","Thiago Senhor":"thiago-senior","Thiago Doutor":"thiago-doutor","Thiago Especialista":"thiago-especialista","Thiago Supremo":"thiago-supremo"};
