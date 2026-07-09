@@ -23,6 +23,14 @@ const app = express()
 app.use(helmet(), corsMiddleware, express.json({ limit: '200mb' }), express.urlencoded({ extended: true, limit: '200mb' }))
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))
 app.use('/api/chat', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }))
+// Rota de senha supremo: limite bem mais apertado para dificultar forca bruta
+app.use('/api/auth/verify-supremo', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Aguarde antes de tentar novamente.' },
+}))
 app.use('/api/auth', authRoutes)
 app.use('/api/auth', verifySupremoRoutes)
 app.use('/api/chat', chatRoutes)

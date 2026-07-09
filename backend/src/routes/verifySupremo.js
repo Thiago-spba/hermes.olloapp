@@ -5,10 +5,19 @@
 // nunca revelar qual e o valor certo
 // ============================================
 import { Router } from 'express'
+import { timingSafeEqual, createHash } from 'crypto'
 import dotenv from 'dotenv'
 dotenv.config()
 
 const router = Router()
+
+// Comparacao em tempo constante — hash normaliza o tamanho dos buffers
+// e evita vazar por timing tanto o conteudo quanto o tamanho da senha
+const safeCompare = (a, b) => {
+  const bufA = createHash('sha256').update(String(a)).digest()
+  const bufB = createHash('sha256').update(String(b)).digest()
+  return timingSafeEqual(bufA, bufB)
+}
 
 // ============================================
 // POST /api/auth/verify-supremo
@@ -22,7 +31,7 @@ router.post('/verify-supremo', (req, res) => {
     return res.status(400).json({ error: 'Senha obrigatoria.' })
   }
 
-  const isValid = password === process.env.SUPREMO_PASS
+  const isValid = safeCompare(password, process.env.SUPREMO_PASS || '')
 
   return res.json({ valid: isValid })
 })
