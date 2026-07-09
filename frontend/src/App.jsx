@@ -178,6 +178,7 @@ const App = () => {
   const saveDebounceRef = useRef(null);
   const lastAssistantCountRef = useRef(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -253,12 +254,21 @@ const App = () => {
       isUserScrolling.current = false;
     }, 3000);
     const c = mainRef.current;
-    if (c) setShowScrollTop(c.scrollTop > 260);
+    if (c) {
+      setShowScrollTop(c.scrollTop > 260);
+      const distanceFromBottom = c.scrollHeight - c.scrollTop - c.clientHeight;
+      setShowScrollDown(distanceFromBottom > 260);
+    }
   }, []);
 
   const scrollToTop = useCallback(() => {
     const c = mainRef.current;
     if (c) c.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  const scrollToBottomManual = useCallback(() => {
+    const c = mainRef.current;
+    if (c) c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -608,6 +618,37 @@ const App = () => {
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
         >
           ▲
+        </button>
+      )}
+      {showScrollDown && (
+        <button
+          onClick={scrollToBottomManual}
+          aria-label="Ir para o final da conversa"
+          title="Ir para o final da conversa"
+          style={{
+            position: "fixed",
+            right: "10px",
+            top: "64px",
+            zIndex: 90,
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
+            border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+            backgroundColor: isDark ? "rgba(13,46,31,0.85)" : "rgba(224,245,239,0.9)",
+            color: isDark ? "#00e5ff" : "#0099bb",
+            fontSize: "16px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: 0.75,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            transition: "opacity 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
+        >
+          ▼
         </button>
       )}
       {!docMode && (
