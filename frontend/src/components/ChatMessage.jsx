@@ -4,6 +4,13 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 
+// jsPDF e uma biblioteca pesada -- carregada sob demanda so quando o
+// usuario clica em baixar, em vez de inflar o bundle inicial pra todo mundo
+const handleExportPdf = async (message) => {
+  const { exportMessageToPdf } = await import("../utils/exportPdf");
+  exportMessageToPdf(message, { title: "HERMES" });
+};
+
 // Converte delimitadores LaTeX para o formato que o KaTeX entende
 const normalizarLatex = (texto) => {
   if (!texto) return texto;
@@ -398,6 +405,21 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                     }}
                   >
                     {speaking ? (paused ? "▶" : "⏸") : "🔊"}
+                  </button>
+                  <button
+                    onClick={() => handleExportPdf(message)}
+                    title="Baixar esta resposta em PDF"
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      padding: "0 3px",
+                      color: isDark ? "#3d6b5e" : "#7aada0",
+                    }}
+                  >
+                    📄
                   </button>
                 </div>
               )}

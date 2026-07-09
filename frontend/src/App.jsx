@@ -441,23 +441,33 @@ const App = () => {
           userId={user?.uid}
         />
       )}
-      <Header
-        isConnected={isConnected}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
-        user={user}
-        onLogout={handleLogout}
-        onHistoryClick={handleHistoryClick}
-        onProjectsClick={() => setShowProjects(true)}
-        onKnowledgeClick={() => setShowKnowledge(true)}
-        onNotebookClick={() => setShowNotebook(true)}
-        studyMode={studyMode}
-        onToggleStudyMode={setStudyMode}
-        docMode={docMode}
-        onToggleDocMode={toggleDocMode}
-      />
+      <style>{`
+        @media print {
+          .hermes-print-hide { display: none !important; }
+          .hermes-print-area { height: auto !important; overflow: visible !important; }
+          body, html { background: #fff !important; }
+        }
+      `}</style>
+      <div className="hermes-print-hide">
+        <Header
+          isConnected={isConnected}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          user={user}
+          onLogout={handleLogout}
+          onHistoryClick={handleHistoryClick}
+          onProjectsClick={() => setShowProjects(true)}
+          onKnowledgeClick={() => setShowKnowledge(true)}
+          onNotebookClick={() => setShowNotebook(true)}
+          studyMode={studyMode}
+          onToggleStudyMode={setStudyMode}
+          docMode={docMode}
+          onToggleDocMode={toggleDocMode}
+        />
+      </div>
       {activeProject && (
         <div
+          className="hermes-print-hide"
           style={{
             ...styles.studyBanner,
             backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
@@ -477,6 +487,7 @@ const App = () => {
       )}
       {studyMode && (
         <div
+          className="hermes-print-hide"
           style={{
             ...styles.studyBanner,
             backgroundColor: isDark ? "#0d2e1f" : "#e0f5ef",
@@ -496,6 +507,7 @@ const App = () => {
         </div>
       )}
       <main
+        className="hermes-print-area"
         ref={mainRef}
         style={
           docMode
@@ -591,6 +603,7 @@ const App = () => {
       </main>
       {showScrollTop && (
         <button
+          className="hermes-print-hide"
           onClick={scrollToTop}
           aria-label="Voltar ao inicio da conversa"
           title="Voltar ao inicio da conversa"
@@ -622,6 +635,7 @@ const App = () => {
       )}
       {showScrollDown && (
         <button
+          className="hermes-print-hide"
           onClick={scrollToBottomManual}
           aria-label="Ir para o final da conversa"
           title="Ir para o final da conversa"
@@ -651,19 +665,49 @@ const App = () => {
           ▼
         </button>
       )}
-      {!docMode && (
-        <ModelSelector
-          selectedModel={selectedModel}
-          onModelChange={changeModel}
-          isDark={isDark}
-        />
+      {docMode && !showWelcomeScreen && (
+        <button
+          className="hermes-print-hide"
+          onClick={() => window.print()}
+          aria-label="Salvar conversa como PDF"
+          title="Salvar conversa como PDF"
+          style={{
+            position: "fixed",
+            left: "10px",
+            bottom: "130px",
+            zIndex: 90,
+            padding: "8px 12px",
+            borderRadius: "20px",
+            border: "1px solid #b0ddd4",
+            backgroundColor: "rgba(224,245,239,0.9)",
+            color: "#0099bb",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          🖨️ Salvar como PDF
+        </button>
       )}
-      <ChatInput
-        onSend={handleSendMessage}
-        isLoading={isLoading}
-        isDark={isDark}
-        selectedModel={selectedModel}
-      />
+      <div className="hermes-print-hide">
+        {!docMode && (
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={changeModel}
+            isDark={isDark}
+          />
+        )}
+        <ChatInput
+          onSend={handleSendMessage}
+          isLoading={isLoading}
+          isDark={isDark}
+          selectedModel={selectedModel}
+        />
+      </div>
     </div>
   );
 };

@@ -13,6 +13,13 @@ export default defineConfig({
           if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) {
             return 'react-vendor'
           }
+          // jsPDF (e dependencias) so e usado sob demanda (botao de exportar
+          // PDF) -- nao forcar pro chunk "vendor" carregado sempre, senao
+          // perde o code-splitting do import() dinamico
+          const pdfOnlyDeps = ['/jspdf', '/canvg/', '/dompurify/', '/fflate/', '/rgbcolor/', '/svg-pathdata/', '/core-js/', '/fast-png/']
+          if (pdfOnlyDeps.some((dep) => id.includes(dep))) {
+            return
+          }
           return 'vendor'
         },
       }
