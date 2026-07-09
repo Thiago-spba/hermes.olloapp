@@ -326,54 +326,54 @@ const Header = ({
         }}
       >
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ position: "relative" }}>
-            <img
-              src="/favicon-96x96.png"
-              alt="Hermes"
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                filter: `drop-shadow(0 0 8px ${isConnected ? "#00e5ff" : "#ff4455"})`,
-                transition: "filter 0.3s ease",
-              }}
-            />
+        {!docMode && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ position: "relative" }}>
+              <img
+                src="/favicon-96x96.png"
+                alt="Hermes"
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  filter: `drop-shadow(0 0 8px ${isConnected ? "#00e5ff" : "#ff4455"})`,
+                  transition: "filter 0.3s ease",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "1px",
+                  right: "1px",
+                  width: "9px",
+                  height: "9px",
+                  borderRadius: "50%",
+                  backgroundColor: isConnected ? "#00e5aa" : "#ff4455",
+                  border: `2px solid ${isDark ? "#071a14" : "#f0faf7"}`,
+                  boxShadow: `0 0 6px ${isConnected ? "#00e5aa" : "#ff4455"}`,
+                  animation: isConnected ? "none" : "pulse 1.5s infinite",
+                }}
+              />
+            </div>
             <div
               style={{
-                position: "absolute",
-                bottom: "1px",
-                right: "1px",
-                width: "9px",
-                height: "9px",
-                borderRadius: "50%",
-                backgroundColor: isConnected ? "#00e5aa" : "#ff4455",
-                border: `2px solid ${isDark ? "#071a14" : "#f0faf7"}`,
-                boxShadow: `0 0 6px ${isConnected ? "#00e5aa" : "#ff4455"}`,
-                animation: isConnected ? "none" : "pulse 1.5s infinite",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              lineHeight: 1.2,
-            }}
-          >
-            <span
-              style={{
-                fontSize: "15px",
-                fontWeight: "800",
-                letterSpacing: "3px",
-                color: isDark ? "#00e5ff" : "#0099bb",
-                textShadow: isDark ? "0 0 12px rgba(0,229,255,0.5)" : "none",
+                display: "flex",
+                flexDirection: "column",
+                lineHeight: 1.2,
               }}
             >
-              HERMES
-            </span>
-            {!docMode && (
+              <span
+                style={{
+                  fontSize: "15px",
+                  fontWeight: "800",
+                  letterSpacing: "3px",
+                  color: isDark ? "#00e5ff" : "#0099bb",
+                  textShadow: isDark ? "0 0 12px rgba(0,229,255,0.5)" : "none",
+                }}
+              >
+                HERMES
+              </span>
               <span
                 style={{
                   fontSize: "9px",
@@ -384,9 +384,10 @@ const Header = ({
               >
                 AI Agent • {isConnected ? "Online" : "Offline"}
               </span>
-            )}
+            </div>
           </div>
-        </div>
+        )}
+        {docMode && <div />}
 
         {/* Menu button */}
         {user && (
