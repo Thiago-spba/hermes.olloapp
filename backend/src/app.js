@@ -20,7 +20,18 @@ dotenv.config()
 const serviceAccount = JSON.parse(fs.readFileSync(new URL('../firebase-adminsdk.json', import.meta.url)))
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
 const app = express()
-app.use(helmet(), corsMiddleware, express.json({ limit: '200mb' }), express.urlencoded({ extended: true, limit: '200mb' }))
+app.use(helmet(), corsMiddleware)
+
+// 200mb valia pra toda a API — vetor de DoS (qualquer rota aceitava payload gigante).
+// Rotas que de fato recebem audio/imagem/texto longo (base64) ganham limite maior;
+// o resto (login, verify-supremo, etc.) fica com um limite pequeno por padrao.
+const bigBody = express.json({ limit: '25mb' })
+const bigUrlencoded = express.urlencoded({ extended: true, limit: '25mb' })
+app.use('/api/chat', bigBody, bigUrlencoded)
+app.use('/api/knowledge', bigBody, bigUrlencoded)
+app.use(express.json({ limit: '2mb' }))
+app.use(express.urlencoded({ extended: true, limit: '2mb' }))
+
 app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }))
 app.use('/api/chat', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }))
 // Rota de senha supremo: limite bem mais apertado para dificultar forca bruta
@@ -81,7 +92,7 @@ app.delete('/api/knowledge/:id', auth, (req, res) => {
   catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage() }).single('pdf'), async (req, res) => {
+app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } }).single('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Arquivo nao enviado' })
     const fullText = req.file.originalname.endsWith('.pdf') ? await extractPdfText(req.file.buffer.toString('base64')) : req.file.buffer.toString('utf8')
@@ -91,7 +102,7 @@ app.post('/api/upload/pdf', auth, multer({ storage: multer.memoryStorage() }).si
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
-app.post("/api/extract-pdf", auth, multer({ storage: multer.memoryStorage() }).single("pdf"), async (req, res) => {
+app.post("/api/extract-pdf", auth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } }).single("pdf"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Arquivo nao enviado" })
     const text = await extractPdfText(req.file.buffer.toString("base64"))
