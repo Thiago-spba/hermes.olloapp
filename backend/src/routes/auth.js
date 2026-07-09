@@ -9,6 +9,7 @@ import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import { validateLogin } from '../middleware/sanitize.js'
+import { verifyPassword } from '../utils/verifyPassword.js'
 
 dotenv.config()
 
@@ -38,7 +39,7 @@ router.post('/login', validateLogin, (req, res) => {
 
   // Busca usuário pelo nome
   const user = USERS.find(
-    u => u.name === username && u.password === password
+    u => u.name === username && verifyPassword(password, u.password)
   )
 
   if (!user) {
