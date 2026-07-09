@@ -7,6 +7,7 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const current = MODELS[selectedModel] || MODELS["thiago-doutor"];
 
@@ -23,6 +24,7 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
       setShowPasswordModal(true);
       setPassword("");
       setPasswordError(false);
+      setShowPassword(false);
       setOpen(false);
     } else {
       onModelChange(key);
@@ -43,6 +45,7 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
         setShowPasswordModal(false);
         setPassword("");
         setPasswordError(false);
+        setShowPassword(false);
       } else {
         setPasswordError(true);
         setPassword("");
@@ -99,29 +102,50 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
                 Digite a senha para ativar
               </div>
             </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setPasswordError(false);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && handlePasswordConfirm()}
-              placeholder="Senha"
-              autoFocus
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "8px",
-                border: `1px solid ${passwordError ? "#ff4455" : isDark ? "#143d2e" : "#b0ddd4"}`,
-                backgroundColor: isDark ? "#071a14" : "#f0faf7",
-                color: isDark ? "#e0f5f0" : "#071a14",
-                fontSize: "14px",
-                outline: "none",
-                boxSizing: "border-box",
-                marginBottom: "6px",
-              }}
-            />
+            <div style={{ position: "relative", marginBottom: "6px" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError(false);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handlePasswordConfirm()}
+                placeholder="Senha"
+                autoFocus
+                style={{
+                  width: "100%",
+                  padding: "10px 36px 10px 12px",
+                  borderRadius: "8px",
+                  border: `1px solid ${passwordError ? "#ff4455" : isDark ? "#143d2e" : "#b0ddd4"}`,
+                  backgroundColor: isDark ? "#071a14" : "#f0faf7",
+                  color: isDark ? "#e0f5f0" : "#071a14",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+                style={{
+                  position: "absolute",
+                  right: "8px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "15px",
+                  padding: "4px",
+                  lineHeight: 1,
+                  color: isDark ? "#7aada0" : "#2a6b5a",
+                }}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
             {passwordError && (
               <div
                 style={{
@@ -140,6 +164,7 @@ const ModelSelector = ({ selectedModel, onModelChange, isDark }) => {
                   setShowPasswordModal(false);
                   setPassword("");
                   setPasswordError(false);
+                  setShowPassword(false);
                 }}
                 style={{
                   flex: 1,
