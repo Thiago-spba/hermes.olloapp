@@ -234,7 +234,7 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
           backgroundColor: "transparent",
           border: "none",
           borderRadius: 0,
-          padding: "10px 0",
+          padding: "14px 0",
           minWidth: undefined,
         } : {
           ...styles.bubble,
@@ -260,22 +260,6 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
           minWidth: isThinking ? "220px" : undefined,
         }}
       >
-        {docMode && !isThinking && (
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: "700",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              color: isError ? "#cc2222" : isUser ? "#555555" : "#0099bb",
-              marginBottom: "4px",
-              borderBottom: "1px solid #ddd",
-              paddingBottom: "4px",
-            }}
-          >
-            {isError ? "Erro" : isUser ? "Você perguntou" : "Hermes respondeu"}
-          </div>
-        )}
         {isThinking ? (
           <ECGLine />
         ) : (
@@ -302,6 +286,7 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                   color: docMode
                     ? (isError ? "#cc2222" : "#1a1a1a")
                     : isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
+                  fontWeight: docMode && isUser ? "700" : undefined,
                 }}
               >
                 <ReactMarkdown

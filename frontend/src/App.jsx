@@ -191,6 +191,13 @@ const App = () => {
   }, [docMode]);
   const toggleDocMode = () => setDocMode((prev) => !prev);
 
+  const [docTitle, setDocTitle] = useState(() => {
+    return localStorage.getItem("hermes-doc-title") || "";
+  });
+  useEffect(() => {
+    localStorage.setItem("hermes-doc-title", docTitle);
+  }, [docTitle]);
+
   const {
     conversationId,
     conversations,
@@ -480,17 +487,29 @@ const App = () => {
           <div
             style={{
               textAlign: "center",
-              marginBottom: "28px",
-              paddingBottom: "16px",
-              borderBottom: "2px solid #071a14",
+              marginBottom: "24px",
+              paddingBottom: "14px",
+              borderBottom: "1px solid #cccccc",
             }}
           >
-            <div style={{ fontSize: "clamp(18px, 5vw, 24px)", fontWeight: "800", letterSpacing: "3px", color: "#071a14" }}>
-              HERMES
-            </div>
-            <div style={{ fontSize: "clamp(10px, 2.5vw, 12px)", color: "#666666", marginTop: "4px" }}>
-              Registro da Conversa — {new Date().toLocaleDateString("pt-BR")}
-            </div>
+            <input
+              type="text"
+              value={docTitle}
+              onChange={(e) => setDocTitle(e.target.value)}
+              placeholder="Título do documento"
+              style={{
+                width: "100%",
+                textAlign: "center",
+                fontSize: "clamp(18px, 5vw, 24px)",
+                fontWeight: "800",
+                letterSpacing: "1px",
+                color: "#071a14",
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontFamily: "inherit",
+              }}
+            />
           </div>
         )}
         {showWelcomeScreen ? (
