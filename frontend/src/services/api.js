@@ -60,17 +60,24 @@ export const sendMessage = async (message, history = [], images = [], onToken = 
     const chunk = decoder.decode(value, { stream: true })
     const lines = chunk.split("\n").filter(l => l.startsWith("data: "))
     for (const line of lines) {
+      let json
       try {
-        const json = JSON.parse(line.replace("data: ", ""))
-        if (json.token) {
-          fullResponse += json.token
-          if (onToken) onToken(json.token, false, null)
-        }
-        if (json.done && json.modelKey && onToken) {
-          onToken("", true, json.modelKey)
-        }
-        if (json.error) throw new Error(json.error)
-      } catch {}
+        json = JSON.parse(line.replace("data: ", ""))
+      } catch {
+        continue
+      }
+      // json.error precisa propagar de verdade -- antes ficava preso no
+      // mesmo try/catch do JSON.parse e era engolido silenciosamente,
+      // fazendo o chat parecer "sem resposta" quando o servidor falhava
+      // no meio do streaming (timeout, erro do provedor, etc.)
+      if (json.error) throw new Error(json.error)
+      if (json.token) {
+        fullResponse += json.token
+        if (onToken) onToken(json.token, false, null)
+      }
+      if (json.done && json.modelKey && onToken) {
+        onToken("", true, json.modelKey)
+      }
     }
   }
 

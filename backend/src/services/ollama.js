@@ -125,7 +125,7 @@ const groqRequest = async (modelId, messages) => {
       temperature: 0.7,
       max_tokens: 8192
     }),
-    signal: AbortSignal.timeout(60000)
+    signal: AbortSignal.timeout(120000)
   });
 };
 
@@ -167,7 +167,7 @@ const mistralStream = async function* (modelId, messages) {
       temperature: 0.7,
       max_tokens: 8192
     }),
-    signal: AbortSignal.timeout(60000)
+    signal: AbortSignal.timeout(120000)
   });
   if (!response.ok) {
     const err = await response.text();
@@ -213,7 +213,7 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
       temperature: 0.7,
       max_tokens: 8192
     }),
-    signal: AbortSignal.timeout(60000)
+    signal: AbortSignal.timeout(120000)
   });
 
   if (!response.ok) {
@@ -280,7 +280,7 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
       stream: true,
       max_tokens: 8192
     }),
-    signal: AbortSignal.timeout(60000)
+    signal: AbortSignal.timeout(120000)
   });
 
   if (!response.ok) {
