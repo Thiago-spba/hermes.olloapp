@@ -373,16 +373,18 @@ const Header = ({
             >
               HERMES
             </span>
-            <span
-              style={{
-                fontSize: "9px",
-                letterSpacing: "1.5px",
-                color: c.sub,
-                textTransform: "uppercase",
-              }}
-            >
-              AI Agent • {isConnected ? "Online" : "Offline"}
-            </span>
+            {!docMode && (
+              <span
+                style={{
+                  fontSize: "9px",
+                  letterSpacing: "1.5px",
+                  color: c.sub,
+                  textTransform: "uppercase",
+                }}
+              >
+                AI Agent • {isConnected ? "Online" : "Offline"}
+              </span>
+            )}
           </div>
         </div>
 

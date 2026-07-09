@@ -358,7 +358,8 @@ const App = () => {
     <div
       style={{
         ...styles.app,
-        backgroundColor: docMode ? "#dcdcdc" : isDark ? "#071a14" : "#f5faf8",
+        backgroundColor: docMode ? "#ffffff" : isDark ? "#071a14" : "#f5faf8",
+        maxWidth: docMode ? "100%" : styles.app.maxWidth,
       }}
     >
       {showPinSetup && (
@@ -462,12 +463,14 @@ const App = () => {
             ? {
                 ...styles.main,
                 backgroundColor: "#ffffff",
-                maxWidth: "780px",
-                margin: "16px auto",
-                padding: "40px 56px",
-                boxShadow: "0 2px 18px rgba(0,0,0,0.25)",
-                borderRadius: "2px",
-                minHeight: "70vh",
+                width: "100%",
+                maxWidth: "100%",
+                margin: 0,
+                padding: "clamp(16px, 4vw, 48px) clamp(16px, 6vw, 64px)",
+                boxShadow: "none",
+                borderRadius: 0,
+                boxSizing: "border-box",
+                flex: 1,
               }
             : styles.main
         }
@@ -482,10 +485,10 @@ const App = () => {
               borderBottom: "2px solid #071a14",
             }}
           >
-            <div style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "3px", color: "#071a14" }}>
+            <div style={{ fontSize: "clamp(18px, 5vw, 24px)", fontWeight: "800", letterSpacing: "3px", color: "#071a14" }}>
               HERMES
             </div>
-            <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
+            <div style={{ fontSize: "clamp(10px, 2.5vw, 12px)", color: "#666666", marginTop: "4px" }}>
               Registro da Conversa — {new Date().toLocaleDateString("pt-BR")}
             </div>
           </div>
@@ -535,11 +538,13 @@ const App = () => {
           </>
         )}
       </main>
-      <ModelSelector
-        selectedModel={selectedModel}
-        onModelChange={changeModel}
-        isDark={isDark}
-      />
+      {!docMode && (
+        <ModelSelector
+          selectedModel={selectedModel}
+          onModelChange={changeModel}
+          isDark={isDark}
+        />
+      )}
       <ChatInput
         onSend={handleSendMessage}
         isLoading={isLoading}
