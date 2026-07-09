@@ -1,8 +1,10 @@
 // ============================================
-// HERMES AI — Rota de Autenticação
-// POST /api/auth/login — gera token JWT
-// Analogia: balcão de recepção que entrega
-// o crachá após verificar identidade
+// HERMES AI — Rota de Autenticação (DESATIVADA)
+// POST /api/auth/login — gera token JWT proprio (legado)
+// Nao esta mais montada em app.js: o app usa Firebase Auth
+// (Google/email) como unico login. Mantido no repo apenas
+// para referencia historica; nao remover a nao ser que o
+// arquivo inteiro seja apagado.
 // ============================================
 
 import { Router } from 'express'
