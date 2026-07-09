@@ -8,6 +8,13 @@ export default defineConfig({
       output: {
         entryFileNames: `assets/[name]-[hash]-v2.js`,
         chunkFileNames: `assets/[name]-[hash]-v2.js`,
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) {
+            return 'react-vendor'
+          }
+          return 'vendor'
+        },
       }
     }
   }
