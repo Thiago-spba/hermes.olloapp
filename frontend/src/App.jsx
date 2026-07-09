@@ -676,21 +676,25 @@ const App = () => {
             left: "10px",
             bottom: "130px",
             zIndex: 90,
-            padding: "8px 12px",
-            borderRadius: "20px",
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
             border: "1px solid #b0ddd4",
             backgroundColor: "rgba(224,245,239,0.9)",
             color: "#0099bb",
-            fontSize: "13px",
-            fontWeight: "600",
+            fontSize: "16px",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: "6px",
+            justifyContent: "center",
+            opacity: 0.75,
             boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            transition: "opacity 0.2s ease",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
         >
-          🖨️ Salvar como PDF
+          🖨️
         </button>
       )}
       <div className="hermes-print-hide">
