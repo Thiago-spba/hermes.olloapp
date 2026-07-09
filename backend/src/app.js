@@ -20,6 +20,9 @@ dotenv.config()
 const serviceAccount = JSON.parse(fs.readFileSync(new URL('../firebase-adminsdk.json', import.meta.url)))
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
 const app = express()
+// Atras do Nginx: sem isso, express-rate-limit enxerga todo mundo como
+// o IP do proxy (127.0.0.1) em vez do IP real de cada visitante
+app.set('trust proxy', 1)
 app.use(helmet(), corsMiddleware)
 
 // 200mb valia pra toda a API — vetor de DoS (qualquer rota aceitava payload gigante).
