@@ -177,6 +177,7 @@ const App = () => {
   const scrollTimeout = useRef(null);
   const saveDebounceRef = useRef(null);
   const lastAssistantCountRef = useRef(0);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("hermes-theme");
@@ -233,12 +234,31 @@ const App = () => {
     }, 50);
   }, []);
 
+  // Usado ao abrir/trocar de conversa: pula direto pro final (sem
+  // animacao, sem checar se o usuario esta rolando manualmente),
+  // dando tempo para a lista inteira de mensagens renderizar primeiro
+  const scrollToBottomInstant = useCallback(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const c = mainRef.current;
+        if (c) c.scrollTo({ top: c.scrollHeight, behavior: "auto" });
+      });
+    });
+  }, []);
+
   const handleUserScroll = useCallback(() => {
     isUserScrolling.current = true;
     if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
     scrollTimeout.current = setTimeout(() => {
       isUserScrolling.current = false;
     }, 3000);
+    const c = mainRef.current;
+    if (c) setShowScrollTop(c.scrollTop > 260);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    const c = mainRef.current;
+    if (c) c.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -271,10 +291,11 @@ const App = () => {
           (m) => m.role === "assistant",
         ).length;
         loadMessages(conv.messages);
+        scrollToBottomInstant();
       }
     };
     load();
-  }, [user, resumeSavedConversation, loadMessages]);
+  }, [user, resumeSavedConversation, loadMessages, scrollToBottomInstant]);
 
   useEffect(() => {
     if (!userId || isLoading) return;
@@ -334,6 +355,7 @@ const App = () => {
         (m) => m.role === "assistant",
       ).length;
       loadMessages(msgs);
+      scrollToBottomInstant();
     }
     setShowHistory(false);
   };
@@ -557,6 +579,37 @@ const App = () => {
           </>
         )}
       </main>
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          aria-label="Voltar ao inicio da conversa"
+          title="Voltar ao inicio da conversa"
+          style={{
+            position: "fixed",
+            right: "10px",
+            bottom: "130px",
+            zIndex: 90,
+            width: "34px",
+            height: "34px",
+            borderRadius: "50%",
+            border: `1px solid ${isDark ? "#143d2e" : "#b0ddd4"}`,
+            backgroundColor: isDark ? "rgba(13,46,31,0.85)" : "rgba(224,245,239,0.9)",
+            color: isDark ? "#00e5ff" : "#0099bb",
+            fontSize: "16px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: 0.75,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            transition: "opacity 0.2s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
+        >
+          ▲
+        </button>
+      )}
       {!docMode && (
         <ModelSelector
           selectedModel={selectedModel}
