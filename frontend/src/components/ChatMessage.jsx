@@ -306,14 +306,14 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                       const text = String(children).replace(/\n$/, "");
                       if (inline) return <code className={className} {...props}>{children}</code>;
                       return (
-                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(0,229,170,0.15)" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: "rgba(0,0,0,0.35)", borderBottom: "1px solid rgba(0,229,170,0.1)" }}>
-                            <span style={{ fontSize: "11px", color: "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>codigo</span>
-                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : "rgba(0,229,170,0.1)", border: "1px solid rgba(0,229,170,0.25)", borderRadius: "6px", color: copied ? "#071a14" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
+                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.15)"}` }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
+                            <span style={{ fontSize: "11px", color: docMode ? "#555555" : "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>codigo</span>
+                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : docMode ? "#ffffff" : "rgba(0,229,170,0.1)", border: `1px solid ${docMode ? "#bbb" : "rgba(0,229,170,0.25)"}`, borderRadius: "6px", color: copied ? "#071a14" : docMode ? "#333333" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
                               {copied ? "Copiado" : "Copiar"}
                             </button>
                           </div>
-                          <pre style={{ margin: 0, padding: "14px", background: "rgba(0,0,0,0.25)", overflowX: "auto" }}><code className={className} {...props}>{children}</code></pre>
+                          <pre style={{ margin: 0, padding: "14px", background: docMode ? "#f7f7f7" : "rgba(0,0,0,0.25)", color: docMode ? "#1a1a1a" : "inherit", overflowX: "auto" }}><code className={className} {...props}>{children}</code></pre>
                         </div>
                       );
                     },
