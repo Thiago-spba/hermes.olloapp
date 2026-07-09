@@ -168,7 +168,7 @@ const FileCard = ({ file, isDark }) => {
   );
 };
 
-const ChatMessage = memo(({ message, isDark }) => {
+const ChatMessage = memo(({ message, isDark, docMode = false }) => {
   const isUser = message.role === "user";
   const isError = message.role === "error";
   const isThinking = message.role === "thinking";
@@ -208,7 +208,7 @@ const ChatMessage = memo(({ message, isDark }) => {
     <div
       style={{
         ...styles.wrapper,
-        justifyContent: isUser ? "flex-end" : "flex-start",
+        justifyContent: docMode ? "flex-start" : isUser ? "flex-end" : "flex-start",
       }}
     >
       <style>{MD_STYLES}</style>
@@ -216,7 +216,7 @@ const ChatMessage = memo(({ message, isDark }) => {
         rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
       />
-      {!isUser && (
+      {!isUser && !docMode && (
         <img
           src="/favicon-96x96.png"
           alt="Agente IA"
@@ -227,7 +227,16 @@ const ChatMessage = memo(({ message, isDark }) => {
         />
       )}
       <div
-        style={{
+        style={docMode ? {
+          ...styles.bubble,
+          width: "100%",
+          maxWidth: "100%",
+          backgroundColor: "transparent",
+          border: "none",
+          borderRadius: 0,
+          padding: "10px 0",
+          minWidth: undefined,
+        } : {
           ...styles.bubble,
           backgroundColor: isError
             ? "#2a0a0a"
@@ -251,6 +260,22 @@ const ChatMessage = memo(({ message, isDark }) => {
           minWidth: isThinking ? "220px" : undefined,
         }}
       >
+        {docMode && !isThinking && (
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: "700",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              color: isError ? "#cc2222" : isUser ? "#555555" : "#0099bb",
+              marginBottom: "4px",
+              borderBottom: "1px solid #ddd",
+              paddingBottom: "4px",
+            }}
+          >
+            {isError ? "Erro" : isUser ? "Você perguntou" : "Hermes respondeu"}
+          </div>
+        )}
         {isThinking ? (
           <ECGLine />
         ) : (
@@ -274,7 +299,9 @@ const ChatMessage = memo(({ message, isDark }) => {
                 className="hermes-md"
                 style={{
                   ...styles.text,
-                  color: isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
+                  color: docMode
+                    ? (isError ? "#cc2222" : "#1a1a1a")
+                    : isError ? "#ff6677" : isDark ? "#e0f5f0" : "#071a14",
                 }}
               >
                 <ReactMarkdown
@@ -318,7 +345,7 @@ const ChatMessage = memo(({ message, isDark }) => {
                 <span
                   style={{
                     ...styles.time,
-                    color: isDark ? "#3d6b5e" : "#7aada0",
+                    color: docMode ? "#888888" : isDark ? "#3d6b5e" : "#7aada0",
                   }}
                 >
                   {message.time}

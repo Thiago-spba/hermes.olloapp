@@ -12,6 +12,8 @@ const Header = ({
   onNotebookClick,
   studyMode, // ✅ ADICIONADO
   onToggleStudyMode, // ✅ ADICIONADO
+  docMode,
+  onToggleDocMode,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [voices, setVoices] = useState([]);
@@ -614,6 +616,66 @@ const Header = ({
                     }}
                   >
                     {studyMode ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Modo Documento — mostra a conversa como pagina de PDF */}
+                <button
+                  onClick={() => {
+                    onToggleDocMode?.();
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  title="Mostra a conversa como uma pagina de documento (fundo branco), mantendo o campo de mensagem e audio"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: docMode
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: docMode
+                      ? isDark
+                        ? "#00e5aa"
+                        : "#007a55"
+                      : c.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>📄</span>
+                    <span>Modo Documento</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: docMode
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: docMode ? "#00e5aa" : c.sub,
+                      border: docMode ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {docMode ? "ON" : "OFF"}
                   </span>
                 </button>
 

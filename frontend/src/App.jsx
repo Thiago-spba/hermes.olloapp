@@ -183,6 +183,14 @@ const App = () => {
     return saved ? saved === "dark" : true;
   });
 
+  const [docMode, setDocMode] = useState(() => {
+    return localStorage.getItem("hermes-doc-mode") === "1";
+  });
+  useEffect(() => {
+    localStorage.setItem("hermes-doc-mode", docMode ? "1" : "0");
+  }, [docMode]);
+  const toggleDocMode = () => setDocMode((prev) => !prev);
+
   const {
     conversationId,
     conversations,
@@ -348,7 +356,10 @@ const App = () => {
 
   return (
     <div
-      style={{ ...styles.app, backgroundColor: isDark ? "#071a14" : "#f5faf8" }}
+      style={{
+        ...styles.app,
+        backgroundColor: docMode ? "#dcdcdc" : isDark ? "#071a14" : "#f5faf8",
+      }}
     >
       {showPinSetup && (
         <PinSetup
@@ -402,6 +413,8 @@ const App = () => {
         onNotebookClick={() => setShowNotebook(true)}
         studyMode={studyMode}
         onToggleStudyMode={setStudyMode}
+        docMode={docMode}
+        onToggleDocMode={toggleDocMode}
       />
       {activeProject && (
         <div
@@ -442,14 +455,48 @@ const App = () => {
           </button>
         </div>
       )}
-      <main ref={mainRef} style={styles.main} onScroll={handleUserScroll}>
+      <main
+        ref={mainRef}
+        style={
+          docMode
+            ? {
+                ...styles.main,
+                backgroundColor: "#ffffff",
+                maxWidth: "780px",
+                margin: "16px auto",
+                padding: "40px 56px",
+                boxShadow: "0 2px 18px rgba(0,0,0,0.25)",
+                borderRadius: "2px",
+                minHeight: "70vh",
+              }
+            : styles.main
+        }
+        onScroll={handleUserScroll}
+      >
+        {docMode && !showWelcomeScreen && (
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "28px",
+              paddingBottom: "16px",
+              borderBottom: "2px solid #071a14",
+            }}
+          >
+            <div style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "3px", color: "#071a14" }}>
+              HERMES
+            </div>
+            <div style={{ fontSize: "11px", color: "#666666", marginTop: "4px" }}>
+              Registro da Conversa — {new Date().toLocaleDateString("pt-BR")}
+            </div>
+          </div>
+        )}
         {showWelcomeScreen ? (
           <WelcomeScreen isDark={isDark} />
         ) : (
           <>
             {messages.map((message) => (
               <div key={message.id}>
-                <ChatMessage message={message} isDark={isDark} />
+                <ChatMessage message={message} isDark={isDark} docMode={docMode} />
               </div>
             ))}
             {isLoading && (
