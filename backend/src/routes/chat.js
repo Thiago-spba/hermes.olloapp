@@ -47,7 +47,7 @@ router.post("/", auth, validateChat, async (req, res) => {
       if (allChunks.length > 0) {
         const query = finalMessage || "resuma"
         const texts = allChunks.map(c => c.text)
-        const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
+        const relevant = findRelevantChunks(texts, query, 8).join("\n\n---\n\n")
         finalMessage = `${query}\n\n<context>${relevant}</context>`
       }
     }

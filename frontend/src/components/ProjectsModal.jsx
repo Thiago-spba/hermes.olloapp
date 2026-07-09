@@ -154,7 +154,7 @@ const ProjectsModal = ({ isDark, onClose, onSelectProject, userId }) => {
       p.description,
       p.context,
       p.pdfText
-        ? `Conteúdo do documento "${p.pdfName}":\n${p.pdfText.substring(0, 3000)}`
+        ? `Conteúdo do documento "${p.pdfName}":\n${p.pdfText.substring(0, 15000)}`
         : "",
     ]
       .filter(Boolean)

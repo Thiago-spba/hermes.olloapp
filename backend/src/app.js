@@ -107,7 +107,9 @@ app.post("/api/extract-pdf", auth, multer({ storage: multer.memoryStorage(), lim
   try {
     if (!req.file) return res.status(400).json({ error: "Arquivo nao enviado" })
     const text = await extractPdfText(req.file.buffer.toString("base64"))
-    res.json({ text: text.substring(0, 8000) })
+    // 50k chars (~12k tokens) -- da margem para o corte de 30k que Meus Projetos
+    // ja aplicava no frontend, mas que nunca chegava a valer por causa desse limite
+    res.json({ text: text.substring(0, 50000) })
   } catch (err) { res.status(500).json({ error: err.message }) }
 })
 
