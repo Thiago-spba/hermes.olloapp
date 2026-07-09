@@ -12,7 +12,13 @@ node_modules/
 
 # Banco de dados local
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.db
+
+# Perfil/dados pessoais (nao versionar)
+perfil.json
+firebase-adminsdk.json
 
 # Logs
 *.log
