@@ -1,7 +1,7 @@
 import { Router } from "express"
 import auth from "../middleware/auth.js"
 import { validateChat } from "../middleware/sanitize.js"
-import { chatStream, extractMemoryFacts } from "../services/ollama.js"
+import { chatStream, extractMemoryFacts, normalizeStyle } from "../services/ollama.js"
 import { transcribeAudio } from "../services/whisper.js"
 import { saveMessage, getKnowledgeChunks, getMemoryAsText, saveMemory, getMemory, getHistory, clearHistory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
@@ -78,23 +78,32 @@ router.post("/", auth, validateChat, async (req, res) => {
     res.setHeader("Connection", "keep-alive")
     res.flushHeaders()
 
+    // ── FASE 1: acumula resposta bruta do modelo primário (sem enviar ao frontend) ──
     let fullResponse = ""
-
     for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
       fullResponse += token
+    }
+
+    // ── FASE 2: normaliza via Groq com streaming e repassa tokens ao frontend ──
+    let normalizedResponse = ""
+    for await (const token of normalizeStyle(fullResponse)) {
+      normalizedResponse += token
       res.write(`data: ${JSON.stringify({ token })}
 
 `)
     }
 
-    saveMessage(userId, "assistant", fullResponse)
+    // Salva no banco a versão normalizada (fallback para bruta se normalização falhou)
+    const responseToSave = normalizedResponse || fullResponse
+    saveMessage(userId, "assistant", responseToSave)
     res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}
 
 `)
     res.end()
 
-    if (message && fullResponse && !imageList.length) {
-      extractMemoryFacts(message, fullResponse).then(facts => {
+    // Extração de memória roda em background com a resposta final
+    if (message && responseToSave && !imageList.length) {
+      extractMemoryFacts(message, responseToSave).then(facts => {
         for (const fact of facts) {
           if (fact.key && fact.value) {
             saveMemory(userId, fact.key, fact.value)

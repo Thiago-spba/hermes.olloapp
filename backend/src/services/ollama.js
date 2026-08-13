@@ -11,6 +11,72 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const COHERE_URL = "https://api.cohere.com/v2/chat";
 
+// ============ PIPELINE DE NORMALIZAÇÃO DE ESTILO ============
+// Prompt dedicado ao revisor de estilo (Etapa 2 do pipeline)
+const PARAPHRASE_SYSTEM_PROMPT = `Você é um revisor de texto e engenheiro de linguagem. Reescreva o texto a seguir para que a prosa soe 100% natural, fluida e com vocabulário humano e unificado em Português do Brasil. REGRAS ABSOLUTAS: Nunca altere comandos em LaTeX, tabelas Markdown ou blocos de código. Nunca altere números ou equações. Altere apenas a estrutura das frases. Entregue apenas o texto revisado, sem saudações.`;
+
+/**
+ * Normaliza o estilo da resposta via Groq (Llama 3.3 70B) com streaming.
+ * Async generator — repassa tokens diretamente ao chamador.
+ * Fallback seguro: se a Groq falhar, faz yield do texto original inteiro.
+ * @param {string} rawText - Resposta bruta do modelo primário
+ * @yields {string} tokens normalizados
+ */
+export const normalizeStyle = async function* (rawText) {
+  if (!rawText || rawText.trim().length < 50) {
+    yield rawText;
+    return;
+  }
+
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: PARAPHRASE_SYSTEM_PROMPT },
+          { role: "user",   content: rawText }
+        ],
+        stream: true,
+        temperature: 0.85,
+        max_tokens: 8192
+      }),
+      signal: AbortSignal.timeout(45000)
+    });
+
+    if (!response.ok) {
+      console.warn(`[normalizeStyle] Groq retornou ${response.status}. Usando texto original.`);
+      yield rawText;
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line.replace("data: ", ""));
+          const token = json.choices?.[0]?.delta?.content;
+          if (token) yield token;
+        } catch {}
+      }
+    }
+
+  } catch (error) {
+    console.error("[normalizeStyle ERROR]:", error.message);
+    yield rawText; // fallback de segurança — nunca quebra a resposta
+  }
+};
+
 export const MODELS = {
   "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
   "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
@@ -235,13 +301,11 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
     for (const line of lines) {
       if (!line.trim()) continue;
       
-      // Remove o prefixo "data: " se existir
       let cleanLine = line;
       if (cleanLine.startsWith("data: ")) {
         cleanLine = cleanLine.slice(6);
       }
       
-      // Pula linhas vazias, marcador de fim e linhas "event:"
       if (!cleanLine.trim() || cleanLine === "[DONE]") continue;
       if (cleanLine.startsWith("event:")) continue;
       
@@ -252,7 +316,6 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
           if (token) yield token;
         }
       } catch (e) {
-        // Ignora erros de parse em linhas malformadas
         console.debug("[Cohere] Parse error:", e.message);
       }
     }
@@ -495,4 +558,3 @@ export const extractMemoryFacts = async (userMessage, assistantResponse) => {
 
 export const checkOllamaHealth = async () => true;
 export const checkWhisperHealth = async () => false;
-
