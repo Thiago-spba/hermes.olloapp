@@ -4,7 +4,8 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import fs from 'fs'
 import { createRequire } from 'module'
-import admin from 'firebase-admin'
+// Importação alterada para a nova sintaxe do Firebase com ES Modules
+import { initializeApp, cert } from 'firebase-admin/app' 
 import corsMiddleware from './middleware/cors.js'
 import verifySupremoRoutes from './routes/verifySupremo.js'
 import chatRoutes from './routes/chat.js'
@@ -16,8 +17,11 @@ import auth from './middleware/auth.js'
 import multer from 'multer'
 
 dotenv.config()
+
+// Inicialização alterada consumindo as funções extraídas diretamente
 const serviceAccount = JSON.parse(fs.readFileSync(new URL('../firebase-adminsdk.json', import.meta.url)))
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
+initializeApp({ credential: cert(serviceAccount) })
+
 const app = express()
 // Atras do Nginx: sem isso, express-rate-limit enxerga todo mundo como
 // o IP do proxy (127.0.0.1) em vez do IP real de cada visitante
