@@ -11,9 +11,16 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const COHERE_URL = "https://api.cohere.com/v2/chat";
 
-// ============ PIPELINE DE NORMALIZAÇÃO DE ESTILO ============
-// Prompt dedicado ao revisor de estilo (Etapa 2 do pipeline)
-const PARAPHRASE_SYSTEM_PROMPT = `Você é um revisor de texto e engenheiro de linguagem. Reescreva o texto a seguir para que a prosa soe 100% natural, fluida e com vocabulário humano e unificado em Português do Brasil. REGRAS ABSOLUTAS: Nunca altere comandos em LaTeX, tabelas Markdown ou blocos de código. Nunca altere números ou equações. Altere apenas a estrutura das frases. Entregue apenas o texto revisado, sem saudações.`;
+// ============ PIPELINE DE NORMALIZAÇÃO DE ESTILO E OFUSCAÇÃO ============
+const DOCUMENT_WASH_PROMPT = `Atue como um editor humano sênior e especialista em ofuscação de padrões.
+Sua tarefa é reescrever o texto fornecido para que soe 100% orgânico, fluido e humano, eliminando qualquer assinatura estatística de linguagem de máquina.
+
+REGRAS DE EXECUÇÃO:
+1. Reconstrução Sintática: Altere a ordem das orações e a estrutura das frases. Não faça apenas trocas de palavras individuais.
+2. Vocabulário: Substitua jargões repetitivos e verbos comuns por sinônimos precisos no Português do Brasil.
+3. Remoção de Vícios: Elimine conectivos robóticos clássicos (ex: "É importante notar que", "Em resumo", "Além disso", "Primeiramente").
+4. IMUTABILIDADE TÉCNICA ABSOLUTA: Nunca altere comandos de código, matrizes, tabelas Markdown, números, datas, equações matemáticas ou nomes próprios.
+5. Saída Direta: Não inclua introduções, notas ou confirmações. Entregue estritamente o texto revisado.`;
 
 /**
  * Normaliza o estilo da resposta via Groq (Llama 3.3 70B) com streaming.
@@ -41,12 +48,12 @@ export const normalizeStyle = async function* (rawText) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: PARAPHRASE_SYSTEM_PROMPT },
+          { role: "system", content: DOCUMENT_WASH_PROMPT },
           { role: "user",   content: rawText }
         ],
         stream: true,
-        temperature: 0.85,
-        max_tokens: 8192
+        temperature: 0.85
+        // Trava artificial de max_tokens removida para permitir máxima geração
       }),
       signal: AbortSignal.timeout(45000)
     });
@@ -123,7 +130,7 @@ METODO DE TRABALHO:
 - So divida em etapas (e pergunte antes) se a tarefa for realmente longa/complexa OU se o usuario pedir explicitamente.
 - Codigo: explique a logica ANTES de mostrar o codigo. Aponte riscos antes de executar.
 - Debugging: identifique a causa raiz, nao apenas o sintoma. Proponha solucao definitiva.
-- Calculos de engenharia: mostre o raciocinio completo, unidades e hipoteses assumidas.
+- Calculos de engenharia: show o raciocinio completo, unidades e hipoteses assumidas.
 - Quando houver multiplas solucoes validas: apresente as opcoes com trade-offs claros.
 
 PROATIVIDADE:
@@ -191,8 +198,8 @@ const groqRequest = async (modelId, messages) => {
       model: modelId,
       messages,
       stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      temperature: 0.7
+      // max_tokens removido
     }),
     signal: AbortSignal.timeout(120000)
   });
@@ -233,8 +240,8 @@ const mistralStream = async function* (modelId, messages) {
       model: modelId,
       messages,
       stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      temperature: 0.7
+      // max_tokens removido
     }),
     signal: AbortSignal.timeout(120000)
   });
@@ -259,7 +266,7 @@ const mistralStream = async function* (modelId, messages) {
   }
 };
 
-// ============ COHERE (CORRIGIDO) ============
+// ============ COHERE ============
 const cohereStream = async function* (modelId, messages, systemPrompt) {
   const cohereMessages = messages.filter(m => m.role !== "system").map(m => ({
     role: m.role,
@@ -279,8 +286,8 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
         ...cohereMessages
       ],
       stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      temperature: 0.7
+      // max_tokens removido
     }),
     signal: AbortSignal.timeout(120000)
   });
@@ -344,7 +351,7 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
       system: systemPrompt,
       messages: anthropicMessages,
       stream: true,
-      max_tokens: 8192
+      max_tokens: 8192 // MANTIDO: Anthropic exige obrigatoriamente este campo
     }),
     signal: AbortSignal.timeout(120000)
   });
@@ -387,29 +394,8 @@ export const chatStream = async function* (message, history = [], images = [], m
 
   const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
 
-  // Limita historico para modelos com menor contexto
-  // Normaliza content para string — Groq/Mistral nao aceitam arrays
-  const normalizeContent = (m) => {
-    if (typeof m.content === "string") return m.content;
-    if (Array.isArray(m.content)) return m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]";
-    return String(m.content || "");
-  };
-
   const estimateTokens = (text) => Math.ceil(String(text || "").length / 4);
-  const limitHistoryByTokens = (hist, maxTokens) => {
-    const filtered = hist.filter(m => m.content);
-    let total = 0;
-    const result = [];
-    for (let i = filtered.length - 1; i >= 0; i--) {
-      const tokens = estimateTokens(Array.isArray(filtered[i].content) ? filtered[i].content.filter(c => c.type === "text").map(c => c.text).join(" ") : filtered[i].content);
-      if (total + tokens > maxTokens) break;
-      total += tokens;
-      result.unshift(filtered[i]);
-    }
-    return result;
-  };
-  // Normaliza arrays de content para string em TODOS os providers não-Anthropic
-  // Evita erro "content must be a string" quando histórico contém mensagens com imagem
+  
   const normalizeHistory = (hist, maxTokens = null) => {
     const filtered = hist.filter(m => m.content);
     const mapped = filtered.map(m => ({
@@ -430,10 +416,15 @@ export const chatStream = async function* (message, history = [], images = [], m
     return result;
   };
 
-  const limitedHistory = model.provider === "anthropic"
-    ? history.filter(m => m.content)
-    : normalizeHistory(history, 7000);
+// ALOCAÇÃO DINÂMICA DE MEMÓRIA: Respeita o limite físico de cada provedor
+  let maxContextWindow = 7000; // Fallback ultrasseguro
+  if (model.provider === "groq") maxContextWindow = 100000;      // Llama 3.3 tem teto de 128k
+  else if (model.provider === "cohere") maxContextWindow = 90000; // Command-R tem teto de 128k
+  else if (model.provider === "mistral") maxContextWindow = 30000;// Mistral tem teto de 32k
 
+  const limitedHistory = model.provider === "anthropic"
+    ? history.filter(m => m.content) // Anthropic gerencia nativamente
+    : normalizeHistory(history, maxContextWindow);
   const messages = [
     { role: "system", content: systemPrompt },
     ...limitedHistory.map(m => ({ role: m.role, content: m.content }))
@@ -462,7 +453,7 @@ export const chatStream = async function* (message, history = [], images = [], m
     messages.push({ role: "user", content: message || "Ola" });
   }
 
-  // FALLBACK INTELIGENTE: Anthropic falha → tenta Mistral
+  // FALLBACK INTELIGENTE
   if (model.provider === "anthropic") {
     try {
       yield* anthropicStream(model.id, messages, systemPrompt);
