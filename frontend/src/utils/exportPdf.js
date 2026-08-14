@@ -1,10 +1,14 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const MARGIN = 15;
+// Padrão ABNT: Margens Superior e Esquerda 3cm (30mm), Inferior e Direita 2cm (20mm)
+const MARGIN_TOP = 30;
+const MARGIN_LEFT = 30;
+const MARGIN_BOTTOM = 20;
+const MARGIN_RIGHT = 20;
 const PAGE_WIDTH = 210; // A4 mm
 const PAGE_HEIGHT = 297;
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
 // Detecta um bloco de tabela markdown (linhas comecando com |) dentro do texto
 const isTableLine = (line) => /^\s*\|.*\|\s*$/.test(line);
@@ -32,26 +36,26 @@ const stripInlineMarkdown = (text) =>
     .replace(/`(.+?)`/g, "$1")
     .replace(/^#+\s*/, "");
 
-// Monta o documento PDF e retorna a instancia jsPDF (sem salvar/baixar) --
-// separado para poder ser testado fora do navegador
+// Monta o documento PDF e retorna a instancia jsPDF (sem salvar/baixar)
 export const buildMessagePdf = (message, opts = {}) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  let y = MARGIN;
+  let y = MARGIN_TOP;
 
+  // Insere título apenas se explicitamente solicitado (sem marcações fixas do sistema)
   const addTitle = () => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(opts.title || "HERMES", MARGIN, y);
-    y += 6;
-    doc.setDrawColor(150);
-    doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-    y += 8;
+    if (opts.title) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(opts.title, MARGIN_LEFT, y);
+      y += 10;
+    }
   };
 
   const ensureSpace = (needed) => {
-    if (y + needed > PAGE_HEIGHT - MARGIN) {
+    if (y + needed > PAGE_HEIGHT - MARGIN_BOTTOM) {
       doc.addPage();
-      y = MARGIN;
+      y = MARGIN_TOP;
     }
   };
 
@@ -73,42 +77,53 @@ export const buildMessagePdf = (message, opts = {}) => {
         startY: y,
         head,
         body,
-        margin: { left: MARGIN, right: MARGIN },
-        styles: { fontSize: 9, cellPadding: 2 },
-        headStyles: { fillColor: [0, 153, 187] },
+        margin: { left: MARGIN_LEFT, right: MARGIN_RIGHT },
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 3, textColor: 0 },
+        headStyles: { fillColor: [230, 230, 230], textColor: 0, fontStyle: "bold" }, // Padrão acadêmico P/B
       });
-      y = doc.lastAutoTable.finalY + 6;
+      y = doc.lastAutoTable.finalY + 8;
       continue;
     }
 
     if (!line.trim()) {
-      y += 4;
+      y += 6; // Simula espaçamento ABNT
       i++;
       continue;
     }
 
     const isHeader = /^#{1,3}\s/.test(line);
     doc.setFont("helvetica", isHeader ? "bold" : "normal");
-    doc.setFontSize(isHeader ? 13 : 11);
+    doc.setFontSize(12); // Padrão ABNT para texto
+    doc.setTextColor(0);
 
     const clean = stripInlineMarkdown(line);
     const wrapped = doc.splitTextToSize(clean, CONTENT_WIDTH);
     for (const w of wrapped) {
       ensureSpace(7);
-      doc.text(w, MARGIN, y);
-      y += 6;
+      doc.text(w, MARGIN_LEFT, y);
+      y += 7; // Entrelinhas aproximado de 1.5
     }
-    if (isHeader) y += 2;
+    if (isHeader) y += 4;
     i++;
   }
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(150);
+  // --- Injeção da Assinatura Discreta ---
+  ensureSpace(20); // Garante que há espaço para a assinatura na página atual
+  y += 10;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(130); // Tom de cinza para não disputar atenção com o texto principal
+  doc.text("Thiago Fernando | Engenheiro da Computação • Licenciado em Matemática", PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
+
+  // --- Numeração de Páginas (Padrão ABNT) ---
   const pageCount = doc.internal.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    doc.text(`Hermes AI Agent - pagina ${p}/${pageCount}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    // ABNT: Numeração no canto superior direito (2cm do topo, 2cm da margem direita)
+    doc.text(`${p}`, PAGE_WIDTH - MARGIN_RIGHT, 20, { align: "right" });
   }
 
   return doc;
@@ -116,6 +131,6 @@ export const buildMessagePdf = (message, opts = {}) => {
 
 export const exportMessageToPdf = (message, opts = {}) => {
   const doc = buildMessagePdf(message, opts);
-  const filename = (opts.filename || "hermes-resposta") + ".pdf";
+  const filename = (opts.filename || "relatorio-tecnico") + ".pdf";
   doc.save(filename);
 };
