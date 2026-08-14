@@ -23,6 +23,9 @@ const PARAPHRASE_SYSTEM_PROMPT = `Você é um revisor de texto e engenheiro de l
  * @yields {string} tokens normalizados
  */
 export const normalizeStyle = async function* (rawText) {
+  // LOG ESPIÃO: Imprime o texto original (com marca d'água) no terminal do backend
+  console.log("\n\n--- TEXTO ORIGINAL DO CLAUDE (COM MARCA D'ÁGUA) ---\n", rawText, "\n---------------------------------------------------\n\n");
+
   if (!rawText || rawText.trim().length < 50) {
     yield rawText;
     return;
