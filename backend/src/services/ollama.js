@@ -122,7 +122,7 @@ export const MODELS = {
   },
   "thiago-senior": {
     provider: "groq",
-    id: "llama-3.3-70b-versatile",
+    id: "qwen/qwen3.6-27b",
     name: "🧠 Thiago Sênior",
     free: true,
     group: "existing"
@@ -675,12 +675,13 @@ export const chatStream = async function* (
   }
 
   // ── Modelo específico escolhido pelo usuário ──────────────
-  const model = MODELS[resolvedKey] || MODELS["thiago-doutor"];
+  let model = MODELS[resolvedKey] || MODELS["thiago-doutor"];
 
   // Imagem: redireciona para Anthropic se provider não suporta
   if (image && !["anthropic"].includes(model.provider)) {
     yield `> 📷 *${model.name} não suporta imagens — redirecionando para 🎓 Thiago Doutor.*\n\n`;
     resolvedKey = "thiago-doutor";
+  model = MODELS[resolvedKey];
   }
 
   const limitedHistory = model.provider === "anthropic"
