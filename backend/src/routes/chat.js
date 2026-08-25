@@ -10,10 +10,28 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, image, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext } = req.body
-    const userId = req.user.id
-    let finalMessage = message || ""
+    const { 
+      message, 
+      image, 
+      images, 
+      audio, 
+      audioMime, 
+      modelKey, 
+      history: frontendHistory, 
+      studyMode, 
+      useRAG, 
+      projectContext 
+    } = req.body
 
+    // Compatibilidade com Firebase Auth (req.user.uid) ou JWT (req.user.id)
+    const userId = req.user?.uid || req.user?.id || "default_user"
+
+    // Compatibilidade: lê tanto array 'images' (frontend) quanto string 'image'
+    const selectedImage = (Array.isArray(images) && images.length > 0) ? images[0] : (image || null)
+
+    let finalMessage = (message || "").trim()
+
+    // 1. Comando de memória rápida (/lembrar)
     if (finalMessage.startsWith("/lembrar ")) {
       const fact = finalMessage.slice(9).trim()
       const [key, ...rest] = fact.split(":")
@@ -21,45 +39,64 @@ router.post("/", auth, validateChat, async (req, res) => {
         saveMemory(userId, key.trim(), rest.join(":").trim())
         res.setHeader("Content-Type", "text/event-stream")
         res.setHeader("Cache-Control", "no-cache")
+        res.setHeader("Connection", "keep-alive")
+        res.setHeader("X-Accel-Buffering", "no")
         res.flushHeaders()
-        res.write(`data: ${JSON.stringify({ token: "Memoria salva!" })}
-
-`)
-        res.write(`data: ${JSON.stringify({ done: true })}
-
-`)
+        res.write(`data: ${JSON.stringify({ token: "Memória salva com sucesso!" })}\n\n`)
+        res.write(`data: ${JSON.stringify({ done: true })}\n\n`)
         res.end()
         return
       }
     }
 
+    // 2. Transcrição de áudio se enviado
     if (audio) {
       try {
-        const transcribed = await transcribeAudio(audio, audioMime || "audio/webm")
-        if (transcribed) finalMessage = `${finalMessage} ${transcribed}`.trim()
+        const transcribed = await transcribeAudio(audio, audioMime || "audio/wav")
+        if (transcribed) {
+          finalMessage = finalMessage ? `${finalMessage} ${transcribed}` : transcribed
+        }
       } catch (whisperError) {
         console.error("Whisper ERRO:", whisperError.message)
       }
     }
 
-    if (!image && (useRAG || getKnowledgeChunks(userId).length > 0)) {
-      const allChunks = getKnowledgeChunks(userId)
-      if (allChunks.length > 0) {
-        const query = finalMessage || "resuma"
-        const texts = allChunks.map(c => c.text)
-        const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
-        finalMessage = `${query}\n\n<context>${relevant}</context>`
+    // Fallback de texto se houver imagem sem mensagem digitada
+    if (!finalMessage && selectedImage) {
+      finalMessage = "Descreva e analise esta imagem."
+    }
+
+    // 3. Base de conhecimento (RAG)
+    if (!selectedImage && (useRAG || (getKnowledgeChunks(userId) && getKnowledgeChunks(userId).length > 0))) {
+      try {
+        const allChunks = getKnowledgeChunks(userId) || []
+        if (allChunks.length > 0) {
+          const query = finalMessage || "resuma os documentos"
+          const texts = allChunks.map(c => c.text || "")
+          const relevant = findRelevantChunks(texts, query, 2).map(c => c.substring(0, 400)).join("\n\n---\n\n")
+          if (relevant) {
+            finalMessage = `${query}\n\n<context>\n${relevant}\n</context>`
+          }
+        }
+      } catch (ragError) {
+        console.error("Erro RAG:", ragError.message)
       }
     }
 
-    if (projectContext && projectContext.trim()) {
-      finalMessage = `${finalMessage}\n\n<projeto_ativo>${projectContext}</projeto_ativo>`
+    // 4. Injeção do Contexto do Projeto Ativo
+    if (projectContext && String(projectContext).trim()) {
+      finalMessage = `${finalMessage}\n\n<projeto_ativo>\n${projectContext.trim()}\n</projeto_ativo>`
     }
 
-    const memory = getMemoryAsText(userId)
+    // 5. Memória persistente
+    const memory = typeof getMemoryAsText === "function" ? getMemoryAsText(userId) : ""
 
-    if (finalMessage) saveMessage(userId, "user", message || "[Audio enviado]")
+    // 6. Salvar mensagem do usuário no banco local
+    if (finalMessage) {
+      saveMessage(userId, "user", message || finalMessage)
+    }
 
+    // 7. Sanitizar e formatar o histórico
     const sessionHistory = Array.isArray(frontendHistory)
       ? frontendHistory
           .filter(m => m && m.content && (m.role === "user" || m.role === "assistant"))
@@ -71,32 +108,34 @@ router.post("/", auth, validateChat, async (req, res) => {
           }))
       : []
 
+    // 8. Configurar SSE para streaming em tempo real
     res.setHeader("Content-Type", "text/event-stream")
     res.setHeader("Cache-Control", "no-cache")
     res.setHeader("Connection", "keep-alive")
+    res.setHeader("X-Accel-Buffering", "no")
     res.flushHeaders()
 
     let fullResponse = ""
 
-    for await (const token of chatStream(finalMessage, sessionHistory, image || null, modelKey || "auto", memory, studyMode || false)) {
+    for await (const token of chatStream(finalMessage, sessionHistory, selectedImage, modelKey || "auto", memory, studyMode || false)) {
       fullResponse += token
-      res.write(`data: ${JSON.stringify({ token })}
-
-`)
+      res.write(`data: ${JSON.stringify({ token })}\n\n`)
     }
 
+    // 9. Salvar resposta da IA e finalizar SSE
     saveMessage(userId, "assistant", fullResponse)
-    res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}
-
-`)
+    res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}\n\n`)
     res.end()
 
-    if (message && fullResponse && !image) {
+    // 10. Extração de memórias em segundo plano
+    if (message && fullResponse && !selectedImage && typeof extractMemoryFacts === "function") {
       extractMemoryFacts(message, fullResponse).then(facts => {
-        for (const fact of facts) {
-          if (fact.key && fact.value) {
-            saveMemory(userId, fact.key, fact.value)
-            console.log(`[Memoria] ${fact.key}: ${fact.value}`)
+        if (Array.isArray(facts)) {
+          for (const fact of facts) {
+            if (fact?.key && fact?.value) {
+              saveMemory(userId, fact.key, fact.value)
+              console.log(`[Memória] ${fact.key}: ${fact.value}`)
+            }
           }
         }
       }).catch(() => {})
@@ -107,9 +146,7 @@ router.post("/", auth, validateChat, async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: error.message })
     } else {
-      res.write(`data: ${JSON.stringify({ error: error.message })}
-
-`)
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`)
       res.end()
     }
   }
@@ -117,39 +154,43 @@ router.post("/", auth, validateChat, async (req, res) => {
 
 router.post("/memory", auth, async (req, res) => {
   try {
+    const userId = req.user?.uid || req.user?.id || "default_user"
     const { key, value } = req.body
-    if (!key || !value) return res.status(400).json({ error: "key e value obrigatorios." })
-    saveMemory(req.user.id, key, value)
-    res.json({ message: "Memoria salva com sucesso." })
+    if (!key || !value) return res.status(400).json({ error: "key e value obrigatórios." })
+    saveMemory(userId, key, value)
+    res.json({ message: "Memória salva com sucesso." })
   } catch (error) {
-    res.status(500).json({ error: "Erro ao salvar memoria." })
+    res.status(500).json({ error: "Erro ao salvar memória." })
   }
 })
 
 router.get("/memory", auth, (req, res) => {
   try {
-    const memories = getMemory(req.user.id)
+    const userId = req.user?.uid || req.user?.id || "default_user"
+    const memories = getMemory(userId)
     res.json({ memories })
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar memorias." })
+    res.status(500).json({ error: "Erro ao buscar memórias." })
   }
 })
 
 router.get("/history", auth, (req, res) => {
   try {
-    const history = getHistory(req.user.id, 50)
+    const userId = req.user?.uid || req.user?.id || "default_user"
+    const history = getHistory(userId, 50)
     res.json({ history })
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar historico." })
+    res.status(500).json({ error: "Erro ao buscar histórico." })
   }
 })
 
 router.delete("/history", auth, (req, res) => {
   try {
-    clearHistory(req.user.id)
-    res.json({ message: "Historico limpo com sucesso." })
+    const userId = req.user?.uid || req.user?.id || "default_user"
+    clearHistory(userId)
+    res.json({ message: "Histórico limpo com sucesso." })
   } catch (error) {
-    res.status(500).json({ error: "Erro ao limpar historico." })
+    res.status(500).json({ error: "Erro ao limpar histórico." })
   }
 })
 

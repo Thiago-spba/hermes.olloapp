@@ -1,69 +1,89 @@
 import { body, validationResult } from 'express-validator';
 
-// Remove caracteres perigosos (prevenir XSS)
+// Remove scripts maliciosos sem quebrar códigos ou símbolos matemáticos
 export const sanitizeText = (text) => {
-  if (!text) return text;
-  // Remove tags HTML/script
+  if (!text || typeof text !== 'string') return text;
   return text
-    .replace(/<[^>]*>/g, '')
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/javascript:/gi, '')
-    .replace(/onclick=/gi, '')
-    .replace(/onerror=/gi, '')
-    .replace(/onload=/gi, '')
+    .replace(/onerror\s*=/gi, '')
+    .replace(/onload\s*=/gi, '')
+    .replace(/onclick\s*=/gi, '')
     .trim();
 };
 
 export const validateChat = [
   body('message')
-    .optional()
+    .optional({ values: 'falsy' })
     .isString()
     .withMessage('Mensagem deve ser texto.')
     .trim()
-    .isLength({ min: 0, max: 10000 })
-    .withMessage('Mensagem muito longa (max 10.000 caracteres).')
+    .isLength({ max: 100000 })
+    .withMessage('Mensagem muito longa.')
     .customSanitizer(value => sanitizeText(value)),
-  
+
+  body('history')
+    .optional()
+    .isArray()
+    .withMessage('Histórico deve ser uma lista.'),
+
   body('audio')
-    .optional()
+    .optional({ values: 'falsy' })
     .isString()
-    .withMessage('Audio invalido.')
-    .isLength({ max: 5000000 })
-    .withMessage('Audio muito grande (max 5MB).'),
-  
+    .withMessage('Áudio inválido.'),
+
+  body('audioMime')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('Formato de áudio inválido.'),
+
   body('image')
-    .optional()
+    .optional({ values: 'falsy' })
     .isString()
-    .withMessage('Imagem invalida.')
-    .isLength({ max: 10000000 })
-    .withMessage('Imagem muito grande (max 10MB).'),
-  
+    .withMessage('Imagem inválida.'),
+
+  body('images')
+    .optional()
+    .isArray()
+    .withMessage('Lista de imagens inválida.'),
+
   body('modelKey')
-    .optional()
+    .optional({ values: 'falsy' })
     .isString()
-    .matches(/^(auto|thiago-analiza|thiago-jr|thiago-senior|thiago-doutor|thiago-especialista|thiago-supremo)$/)
-    .withMessage('Modelo invalido.'),
-  
+    .withMessage('Modelo inválido.'),
+
   body('studyMode')
     .optional()
     .isBoolean()
     .withMessage('Modo estudo deve ser booleano.'),
-  
+
+  body('useRAG')
+    .optional()
+    .isBoolean()
+    .withMessage('useRAG deve ser booleano.'),
+
+  body('projectContext')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('Contexto do projeto deve ser texto.')
+    .isLength({ max: 100000 }),
+
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.warn('⚠️ Validação falhou no chat:', errors.array().map(e => e.msg));
       return res.status(400).json({ 
-        error: 'Dados invalidos.', 
+        error: 'Dados inválidos.', 
         details: errors.array().map(e => e.msg) 
       });
     }
-    
-    // Log de tentativas suspeitas
-    const message = req.body.message || '';
-    const suspiciousPatterns = ['<script', 'alert(', 'eval(', 'document.cookie'];
-    if (suspiciousPatterns.some(pattern => message.toLowerCase().includes(pattern))) {
-      console.warn(`⚠️ Tentativa de XSS detectada do IP: ${req.ip}`);
+
+    // Alerta de segurança preventivo
+    const message = typeof req.body.message === 'string' ? req.body.message : '';
+    if (message.toLowerCase().includes('<script')) {
+      console.warn(`⚠️ Tentativa de injeção detectada do IP: ${req.ip}`);
     }
-    
+
     next();
   }
 ];
@@ -73,24 +93,24 @@ export const validateLogin = [
     .isString()
     .trim()
     .notEmpty()
-    .withMessage('Usuario obrigatorio.')
+    .withMessage('Usuário obrigatório.')
     .isLength({ min: 3, max: 50 })
-    .withMessage('Usuario deve ter entre 3 e 50 caracteres.')
+    .withMessage('Usuário deve ter entre 3 e 50 caracteres.')
     .matches(/^[a-zA-Z0-9@._-]+$/)
-    .withMessage('Usuario contem caracteres invalidos.'),
-  
+    .withMessage('Usuário contém caracteres inválidos.'),
+
   body('password')
     .isString()
     .notEmpty()
-    .withMessage('Senha obrigatoria.')
+    .withMessage('Senha obrigatória.')
     .isLength({ min: 6, max: 100 })
     .withMessage('Senha deve ter entre 6 e 100 caracteres.'),
-  
+
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ 
-        error: 'Dados invalidos.', 
+        error: 'Dados inválidos.', 
         details: errors.array().map(e => e.msg) 
       });
     }
