@@ -1,34 +1,225 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_API_KEY      = process.env.GROQ_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-const COHERE_API_KEY = process.env.COHERE_API_KEY;
+const MISTRAL_API_KEY   = process.env.MISTRAL_API_KEY;
+const COHERE_API_KEY    = process.env.COHERE_API_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-const COHERE_URL = "https://api.cohere.com/v2/chat";
+const GROQ_URL       = "https://api.groq.com/openai/v1/chat/completions";
+const ANTHROPIC_URL  = "https://api.anthropic.com/v1/messages";
+const MISTRAL_URL    = "https://api.mistral.ai/v1/chat/completions";
+const COHERE_URL     = "https://api.cohere.com/v2/chat";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+// ============================================================
+// MODELOS — EXISTENTES + OPENROUTER
+// ============================================================
 export const MODELS = {
-  "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
-  "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
-  "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
-  "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5-20251001",        name: "🎓 Thiago Doutor",       free: false },
-  "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",       name: "🔬 Thiago Especialista", free: false },
-  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",         name: "👑 Thiago Supremo",      free: false },
+  // ── Modo Automático ─────────────────────────────────────
+  "auto": {
+    provider: "auto",
+    id: "auto",
+    name: "⚡ Automático",
+    free: true,
+    group: "auto",
+    description: "Sistema escolhe a melhor IA para cada tarefa"
+  },
+
+  // ── OpenRouter — Especializados em Código ────────────────
+  "or-qwen3-coder": {
+    provider: "openrouter",
+    id: "qwen/qwen3-coder:free",
+    name: "🟢 Qwen3 Coder",
+    free: true,
+    group: "or-code",
+    description: "#1 código gratuito — 1M contexto"
+  },
+  "or-north-mini": {
+    provider: "openrouter",
+    id: "cohere/north-mini-code:free",
+    name: "🟢 North Mini Code",
+    free: true,
+    group: "or-code",
+    description: "Especialista em agentes — 69 tok/s"
+  },
+  "or-laguna": {
+    provider: "openrouter",
+    id: "poolside/laguna-xs-2-1:free",
+    name: "🟢 Laguna XS Code",
+    free: true,
+    group: "or-code",
+    description: "Otimizado para coding agents"
+  },
+  "or-kimi-k3": {
+    provider: "openrouter",
+    id: "moonshotai/kimi-k3:free",
+    name: "🟢 Kimi K3",
+    free: true,
+    group: "or-code",
+    description: "2.8T params — top em código"
+  },
+  "or-gpt-oss": {
+    provider: "openrouter",
+    id: "openai/gpt-oss-120b:free",
+    name: "🟢 GPT-OSS 120B",
+    free: true,
+    group: "or-code",
+    description: "Open source OpenAI — 128K contexto"
+  },
+
+  // ── OpenRouter — Gerais ──────────────────────────────────
+  "or-llama": {
+    provider: "openrouter",
+    id: "meta-llama/llama-3.3-70b-instruct:free",
+    name: "🟢 Llama 3.3 70B",
+    free: true,
+    group: "or-general",
+    description: "Mais estável — geral e conversação"
+  },
+  "or-nemotron": {
+    provider: "openrouter",
+    id: "nvidia/nemotron-3-ultra:free",
+    name: "🟢 Nemotron Ultra",
+    free: true,
+    group: "or-general",
+    description: "1M contexto — documentos longos"
+  },
+  "or-owl": {
+    provider: "openrouter",
+    id: "owl/alpha:free",
+    name: "🟢 Owl Alpha",
+    free: true,
+    group: "or-general",
+    description: "1M contexto — tarefas longas"
+  },
+
+  // ── OpenRouter — Pagos ───────────────────────────────────
+  "or-kimi-k27": {
+    provider: "openrouter",
+    id: "moonshotai/kimi-k2-7:free",
+    name: "💰 Kimi K2.7 Code",
+    free: false,
+    group: "or-paid",
+    description: "Código avançado — pago"
+  },
+
+  // ── Seus Provedores Atuais ───────────────────────────────
+  "thiago-analiza": {
+    provider: "cohere",
+    id: "command-a-03-2025",
+    name: "🔎 Thiago Analiza",
+    free: true,
+    group: "existing"
+  },
+  "thiago-jr": {
+    provider: "mistral",
+    id: "mistral-small-latest",
+    name: "⚙️ Thiago Jr",
+    free: true,
+    group: "existing"
+  },
+  "thiago-senior": {
+    provider: "groq",
+    id: "llama-3.3-70b-versatile",
+    name: "🧠 Thiago Sênior",
+    free: true,
+    group: "existing"
+  },
+  "thiago-doutor": {
+    provider: "anthropic",
+    id: "claude-haiku-4-5-20251001",
+    name: "🎓 Thiago Doutor",
+    free: false,
+    group: "existing"
+  },
+  "thiago-especialista": {
+    provider: "anthropic",
+    id: "claude-sonnet-4-6",
+    name: "🔬 Thiago Especialista",
+    free: false,
+    group: "existing"
+  },
+  "thiago-supremo": {
+    provider: "anthropic",
+    id: "claude-opus-4-7",
+    name: "👑 Thiago Supremo",
+    free: false,
+    group: "existing"
+  },
 };
 
-const DEFAULT_MODEL = "thiago-doutor";
+// ============================================================
+// MODO AUTOMÁTICO — lógica de seleção por contexto
+// ============================================================
 
+// Palavras-chave para detectar tarefas de código
+const CODE_KEYWORDS = [
+  "código", "codigo", "bug", "erro", "function", "função", "funcao",
+  "componente", "component", "react", "node", "javascript", "typescript",
+  "python", "sql", "css", "html", "api", "backend", "frontend", "npm",
+  "import", "export", "const", "let", "var", "async", "await", "promise",
+  "array", "objeto", "object", "debug", "refactor", "deploy", "git",
+  "classe", "class", "interface", "type", "generics", "hook", "useState",
+  "useEffect", "express", "fastify", "prisma", "database", "query",
+  "endpoint", "fetch", "axios", "json", "parse", "regex", "script",
+  "dockerfile", "nginx", "pm2", "ssh", "linux", "bash", "terminal",
+  "instalar", "install", "package", "module", "import error", "sintaxe"
+];
+
+// Palavras-chave para documentos longos
+const LONG_DOC_KEYWORDS = [
+  "resumo", "resume", "analise", "analisa", "documento", "relatório",
+  "relatorio", "transcrição", "transcricao", "texto longo", "arquivo"
+];
+
+const detectTaskType = (message = "") => {
+  const lower = message.toLowerCase();
+  const isCode = CODE_KEYWORDS.some(k => lower.includes(k));
+  const isLongDoc = LONG_DOC_KEYWORDS.some(k => lower.includes(k)) || message.length > 3000;
+  if (isCode) return "code";
+  if (isLongDoc) return "long_doc";
+  return "general";
+};
+
+// Fila de fallback por tipo de tarefa (gratuitos primeiro)
+const FALLBACK_QUEUES = {
+  code: [
+    "or-qwen3-coder",
+    "or-north-mini",
+    "or-laguna",
+    "or-kimi-k3",
+    "or-gpt-oss",
+    "thiago-senior",      // Groq — fallback existente
+    "or-kimi-k27",        // pago — último recurso
+  ],
+  general: [
+    "or-llama",
+    "or-gpt-oss",
+    "or-nemotron",
+    "or-owl",
+    "thiago-senior",
+    "thiago-jr",
+  ],
+  long_doc: [
+    "or-nemotron",        // 1M contexto
+    "or-owl",             // 1M contexto
+    "or-llama",
+    "thiago-senior",
+  ],
+};
+
+// ============================================================
+// SYSTEM PROMPT
+// ============================================================
 const BASE_PROMPT = `Voce e o HERMES — um agente de inteligencia artificial de elite, criado para ser o assistente pessoal definitivo do Thiago.
 
 NUCLEO DE IDENTIDADE:
 Voce combina o rigor de um engenheiro senior, a precisao de um pesquisador cientifico e a clareza de um professor excepcional. Voce tem profundidade de um profissional senior, mas usa essa profundidade com economia: entrega o essencial primeiro e so se aprofunda quando pedem.
 
 AREAS DE CONHECIMENTO — SEM RESTRICOES:
-Voce responde com o mesmo rigor e qualidade sobre QUALQUER assunto: engenharia, programacao, tecnologia, redes, eletrica, eletronica, matematica, ciencias exatas, saude, medicina, nutricao, historia, direito, financas, economia, filosofia, psicologia, culinaria, arte, musica, literatura, idiomas, esportes, geopolitica, e qualquer outro tema. Nao ha perguntas fora do escopo. Se o Thiago pergunta, voce responde.
+Voce responde com o mesmo rigor e qualidade sobre QUALQUER assunto: engenharia, programacao, tecnologia, redes, eletrica, eletronica, matematica, ciencias exatas, saude,medicina, nutricao, historia, direito, financas, economia, filosofia, psicologia, culinaria, arte, musica, literatura, idiomas, esportes, geopolitica, e qualquer outro tema. Nao ha perguntas fora do escopo. Se o Thiago pergunta, voce responde.
 
 ANTES DE RESPONDER — pergunte a si mesmo:
 - Tenho certeza absoluta disso ou estou suposicionando?
@@ -37,7 +228,7 @@ ANTES DE RESPONDER — pergunte a si mesmo:
 - Estou resolvendo o problema raiz ou apenas o sintoma?
 
 COMUNICACAO:
-- REGRA DE OURO DA CONCISAO: por padrao, responda no MENOR tamanho que resolva a pergunta. Va direto a resposta. So produza explicacoes longas, tabelas extensas ou passo a passo detalhado quando o usuario pedir explicitamente (ex.: 'explica', 'detalha', 'me ensina') ou quando o Modo Estudo estiver ativo. Na duvida, seja breve e ofereca aprofundar.
+- REGRA DE OURO DA CONCISAO: por padrao, responda no MENOR tamanho que resolva a pergunta. Va direto a resposta. So produza explicacoes longas, tabelas extensas ou passoa passo detalhado quando o usuario pedir explicitamente (ex.: 'explica', 'detalha', 'me ensina') ou quando o Modo Estudo estiver ativo. Na duvida, seja breve e ofereca aprofundar.
 - Portugues brasileiro. Direto, tecnico, sem enrolacao.
 - Calibre a profundidade da resposta ao nivel demonstrado pelo usuario.
 - Para conceitos complexos: analogia primeiro, tecnica depois.
@@ -51,7 +242,7 @@ INTEGRIDADE ABSOLUTA:
 
 METODO DE TRABALHO:
 - Responda direto, de forma completa. NAO pergunte "tudo de uma vez ou etapa por etapa" por padrao.
-- So divida em etapas (e pergunte antes) se a tarefa for realmente longa/complexa OU se o usuario pedir explicitamente.
+- So divida em etapas (e pergunte antes) se a tarefa for realmente longa/complexa OUse o usuario pedir explicitamente.
 - Codigo: explique a logica ANTES de mostrar o codigo. Aponte riscos antes de executar.
 - Debugging: identifique a causa raiz, nao apenas o sintoma. Proponha solucao definitiva.
 - Calculos de engenharia: mostre o raciocinio completo, unidades e hipoteses assumidas.
@@ -59,11 +250,11 @@ METODO DE TRABALHO:
 
 PROATIVIDADE:
 - Se detectar um erro ou risco nao perguntado, aponte antes de responder o que foi pedido.
-- Se a pergunta for ambigua, resolva a interpretacao mais provavel E pergunte se era isso.
+- Se a pergunta for ambigua, resolva a interpretacao mais provavel E pergunte se eraisso.
 - Sugira a proxima etapa logica ao final de respostas tecnicas complexas.
 
 POSTURA DE PROFESSOR:
-- Voce tem o conhecimento e a confiabilidade de um bom professor: firme e preciso no conteudo, gentil e respeitoso no trato.
+- Voce tem o conhecimento e a confiabilidade de um bom professor: firme e preciso noconteudo, gentil e respeitoso no trato.
 - Seja direto ao ponto por padrao — responda o que foi perguntado, sem aula desnecessaria.
 - So explique de forma didatica (analogias, passo a passo, do simples ao complexo) quando o usuario pedir ou quando o assunto claramente exigir.
 - Trate eventuais erros do usuario com respeito, corrigindo sem condescendencia.
@@ -110,27 +301,62 @@ const buildSystemPrompt = (memory = null, studyMode = false) => {
   return prompt;
 };
 
-// ============ GROQ ============
-const groqRequest = async (modelId, messages) => {
-  return await fetch(GROQ_URL, {
+// ============================================================
+// HELPERS
+// ============================================================
+const isRateError = (e) =>
+  e.message && (
+    e.message.includes("429") ||
+    e.message.includes("413") ||
+    e.message.includes("rate") ||
+    e.message.includes("limit") ||
+    e.message.includes("quota") ||
+    e.message.includes("unavailable") ||
+    e.message.includes("overloaded")
+  );
+
+const normalizeMessages = (messages) =>
+  messages.map(m => ({
+    ...m,
+    content: Array.isArray(m.content)
+      ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]"
+      : m.content
+  }));
+
+const estimateTokens = (text) => Math.ceil(String(text || "").length / 4);
+
+const limitHistory = (history, maxTokens = 7000) => {
+  const filtered = history.filter(m => m.content);
+  const normalized = normalizeMessages(filtered);
+  let total = 0;
+  const result = [];
+  for (let i = normalized.length - 1; i >= 0; i--) {
+    const tokens = estimateTokens(normalized[i].content);
+    if (total + tokens > maxTokens) break;
+    total += tokens;
+    result.unshift(normalized[i]);
+  }
+  return result;
+};
+
+// ============================================================
+// PROVIDERS — STREAMS
+// ============================================================
+
+// ── GROQ ────────────────────────────────────────────────────
+const groqStream = async function* (modelId, messages) {
+  const response = await fetch(GROQ_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${GROQ_API_KEY}`
     },
     body: JSON.stringify({
-      model: modelId,
-      messages,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      model: modelId, messages, stream: true,
+      temperature: 0.7, max_tokens: 8192
     }),
     signal: AbortSignal.timeout(60000)
   });
-};
-
-const groqStream = async function* (modelId, messages) {
-  const response = await groqRequest(modelId, messages);
   if (!response.ok) {
     const err = await response.text();
     throw new Error(`Groq erro ${response.status}: ${err}`);
@@ -140,8 +366,9 @@ const groqStream = async function* (modelId, messages) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    const lines = decoder.decode(value, { stream: true })
+      .split("\n")
+      .filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
     for (const line of lines) {
       try {
         const json = JSON.parse(line.replace("data: ", ""));
@@ -152,7 +379,7 @@ const groqStream = async function* (modelId, messages) {
   }
 };
 
-// ============ MISTRAL ============
+// ── MISTRAL ─────────────────────────────────────────────────
 const mistralStream = async function* (modelId, messages) {
   const response = await fetch(MISTRAL_URL, {
     method: "POST",
@@ -161,11 +388,8 @@ const mistralStream = async function* (modelId, messages) {
       "Authorization": `Bearer ${MISTRAL_API_KEY}`
     },
     body: JSON.stringify({
-      model: modelId,
-      messages,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      model: modelId, messages, stream: true,
+      temperature: 0.7, max_tokens: 8192
     }),
     signal: AbortSignal.timeout(60000)
   });
@@ -178,8 +402,9 @@ const mistralStream = async function* (modelId, messages) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    const lines = decoder.decode(value, { stream: true })
+      .split("\n")
+      .filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
     for (const line of lines) {
       try {
         const json = JSON.parse(line.replace("data: ", ""));
@@ -190,12 +415,14 @@ const mistralStream = async function* (modelId, messages) {
   }
 };
 
-// ============ COHERE (CORRIGIDO) ============
+// ── COHERE ──────────────────────────────────────────────────
 const cohereStream = async function* (modelId, messages, systemPrompt) {
-  const cohereMessages = messages.filter(m => m.role !== "system").map(m => ({
-    role: m.role,
-    content: typeof m.content === "string" ? m.content : (m.content?.[0]?.text || "")
-  }));
+  const cohereMessages = messages
+    .filter(m => m.role !== "system")
+    .map(m => ({
+      role: m.role,
+      content: typeof m.content === "string" ? m.content : (m.content?.[0]?.text || "")
+    }));
 
   const response = await fetch(COHERE_URL, {
     method: "POST",
@@ -205,13 +432,8 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
     },
     body: JSON.stringify({
       model: modelId,
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...cohereMessages
-      ],
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 8192
+      messages: [{ role: "system", content: systemPrompt }, ...cohereMessages],
+      stream: true, temperature: 0.7, max_tokens: 8192
     }),
     signal: AbortSignal.timeout(60000)
   });
@@ -231,40 +453,26 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split("\n");
     buffer = lines.pop() || "";
-    
     for (const line of lines) {
       if (!line.trim()) continue;
-      
-      // Remove o prefixo "data: " se existir
-      let cleanLine = line;
-      if (cleanLine.startsWith("data: ")) {
-        cleanLine = cleanLine.slice(6);
-      }
-      
-      // Pula linhas vazias, marcador de fim e linhas "event:"
-      if (!cleanLine.trim() || cleanLine === "[DONE]") continue;
-      if (cleanLine.startsWith("event:")) continue;
-      
+      let cleanLine = line.startsWith("data: ") ? line.slice(6) : line;
+      if (!cleanLine.trim() || cleanLine === "[DONE]" || cleanLine.startsWith("event:")) continue;
       try {
         const json = JSON.parse(cleanLine);
         if (json.type === "content-delta") {
           const token = json.delta?.message?.content?.text;
           if (token) yield token;
         }
-      } catch (e) {
-        // Ignora erros de parse em linhas malformadas
-        console.debug("[Cohere] Parse error:", e.message);
-      }
+      } catch {}
     }
   }
 };
 
-// ============ ANTHROPIC ============
+// ── ANTHROPIC ───────────────────────────────────────────────
 const anthropicStream = async function* (modelId, messages, systemPrompt) {
-  const anthropicMessages = messages.filter(m => m.role !== "system").map(m => {
-    if (Array.isArray(m.content)) return m;
-    return { role: m.role, content: m.content };
-  });
+  const anthropicMessages = messages
+    .filter(m => m.role !== "system")
+    .map(m => Array.isArray(m.content) ? m : { role: m.role, content: m.content });
 
   const response = await fetch(ANTHROPIC_URL, {
     method: "POST",
@@ -277,8 +485,7 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
       model: modelId,
       system: systemPrompt,
       messages: anthropicMessages,
-      stream: true,
-      max_tokens: 8192
+      stream: true, max_tokens: 8192
     }),
     signal: AbortSignal.timeout(60000)
   });
@@ -293,8 +500,9 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split("\n").filter(l => l.startsWith("data: "));
+    const lines = decoder.decode(value, { stream: true })
+      .split("\n")
+      .filter(l => l.startsWith("data: "));
     for (const line of lines) {
       try {
         const json = JSON.parse(line.replace("data: ", ""));
@@ -307,65 +515,177 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
   }
 };
 
-// ============ MAIN ============
-export const chatStream = async function* (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) {
-  const systemPrompt = buildSystemPrompt(memory, studyMode);
+// ── OPENROUTER ──────────────────────────────────────────────
+const openrouterStream = async function* (modelId, messages) {
+  const safeMessages = normalizeMessages(messages);
 
-  let selectedKey = modelKey === "auto" ? DEFAULT_MODEL : modelKey;
-  if (image && (MODELS[selectedKey]?.provider === "groq" || MODELS[selectedKey]?.provider === "mistral" || MODELS[selectedKey]?.provider === "cohere")) {
-    const oldName = MODELS[selectedKey]?.name || selectedKey;
-    selectedKey = "thiago-doutor";
-    yield `> 📷 *${oldName} não suporta imagens — redirecionando para 🎓 Thiago Doutor.*\n\n`;
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      "HTTP-Referer": "https://hermes.olloapp.com.br",
+      "X-Title": "Hermes AI"
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: safeMessages,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 8192
+    }),
+    signal: AbortSignal.timeout(60000)
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenRouter erro ${response.status}: ${err}`);
   }
 
-  const model = MODELS[selectedKey] || MODELS[DEFAULT_MODEL];
-
-  // Limita historico para modelos com menor contexto
-  // Normaliza content para string — Groq/Mistral nao aceitam arrays
-  const normalizeContent = (m) => {
-    if (typeof m.content === "string") return m.content;
-    if (Array.isArray(m.content)) return m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]";
-    return String(m.content || "");
-  };
-
-  const estimateTokens = (text) => Math.ceil(String(text || "").length / 4);
-  const limitHistoryByTokens = (hist, maxTokens) => {
-    const filtered = hist.filter(m => m.content);
-    let total = 0;
-    const result = [];
-    for (let i = filtered.length - 1; i >= 0; i--) {
-      const tokens = estimateTokens(Array.isArray(filtered[i].content) ? filtered[i].content.filter(c => c.type === "text").map(c => c.text).join(" ") : filtered[i].content);
-      if (total + tokens > maxTokens) break;
-      total += tokens;
-      result.unshift(filtered[i]);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const lines = decoder.decode(value, { stream: true })
+      .split("\n")
+      .filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line.replace("data: ", ""));
+        const token = json.choices?.[0]?.delta?.content;
+        if (token) yield token;
+      } catch {}
     }
-    return result;
-  };
-  // Normaliza arrays de content para string em TODOS os providers não-Anthropic
-  // Evita erro "content must be a string" quando histórico contém mensagens com imagem
-  const normalizeHistory = (hist, maxTokens = null) => {
-    const filtered = hist.filter(m => m.content);
-    const mapped = filtered.map(m => ({
-      ...m,
-      content: Array.isArray(m.content)
-        ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]"
-        : m.content
-    }));
-    if (!maxTokens) return mapped;
-    let total = 0;
-    const result = [];
-    for (let i = mapped.length - 1; i >= 0; i--) {
-      const tokens = estimateTokens(mapped[i].content);
-      if (total + tokens > maxTokens) break;
-      total += tokens;
-      result.unshift(mapped[i]);
+  }
+};
+
+// ============================================================
+// DISPATCHER — chama o provider certo pelo modelKey
+// ============================================================
+const streamForKey = async function* (modelKey, messages, systemPrompt) {
+  const model = MODELS[modelKey];
+  if (!model) throw new Error(`Modelo desconhecido: ${modelKey}`);
+
+  if (model.provider === "openrouter") {
+    yield* openrouterStream(model.id, messages);
+  } else if (model.provider === "anthropic") {
+    yield* anthropicStream(model.id, messages, systemPrompt);
+  } else if (model.provider === "groq") {
+    yield* groqStream(model.id, messages);
+  } else if (model.provider === "mistral") {
+    yield* mistralStream(model.id, messages);
+  } else if (model.provider === "cohere") {
+    yield* cohereStream(model.id, messages, systemPrompt);
+  } else {
+    throw new Error(`Provider desconhecido: ${model.provider}`);
+  }
+};
+
+// ============================================================
+// FALLBACK COM ALERTA — percorre a fila automaticamente
+// ============================================================
+const streamWithFallback = async function* (queue, messages, systemPrompt, firstModelName) {
+  let lastError = null;
+
+  for (let i = 0; i < queue.length; i++) {
+    const key = queue[i];
+    const model = MODELS[key];
+    if (!model) continue;
+
+    // Avisa quando troca de modelo
+    if (i > 0) {
+      const prevName = MODELS[queue[i - 1]]?.name || queue[i - 1];
+      yield `> 🔄 *${prevName} atingiu o limite — continuando com ${model.name}.*\n\n`;
     }
-    return result;
-  };
+
+    // Avisa quando entra em modelo PAGO
+    if (!model.free) {
+      yield `> 💰 *Modelos gratuitos esgotados — usando ${model.name} (PAGO). Acompanhe o consumo em openrouter.ai.*\n\n`;
+    }
+
+    try {
+      yield* streamForKey(key, messages, systemPrompt);
+      return; // sucesso — para aqui
+    } catch (err) {
+      lastError = err;
+      console.error(`[FALLBACK] ${key} falhou:`, err.message);
+
+      // Se não for erro de limite, lança imediatamente
+      if (!isRateError(err)) throw err;
+
+      // Se for o último da fila, avisa e encerra
+      if (i === queue.length - 1) {
+        yield `> ⚠️ *Todos os modelos atingiram o limite. Tente novamente em alguns minutos.*\n\n`;
+        return;
+      }
+      // Senão, continua para o próximo da fila
+    }
+  }
+
+  if (lastError) throw lastError;
+};
+
+// ============================================================
+// MAIN — chatStream
+// ============================================================
+export const chatStream = async function* (
+  message,
+  history = [],
+  image = null,
+  modelKey = "auto",
+  memory = null,
+  studyMode = false
+) {
+  const systemPrompt = buildSystemPrompt(memory, studyMode);
+
+  // ── Resolve modelo ────────────────────────────────────────
+  let resolvedKey = modelKey;
+
+  // Modo Automático: detecta tipo de tarefa e monta fila
+  if (modelKey === "auto" || !modelKey) {
+    const taskType = detectTaskType(message);
+    const queue = FALLBACK_QUEUES[taskType] || FALLBACK_QUEUES.general;
+
+    // Monta mensagens
+    const limitedHistory = limitHistory(history);
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...limitedHistory,
+    ];
+
+    if (image) {
+      // Imagem: usa Anthropic diretamente
+      const base64Data = image.includes(",") ? image.split(",")[1] : image;
+      const mimeType = image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg";
+      messages.push({
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: mimeType, data: base64Data } },
+          { type: "text", text: message || "Analise esta imagem." }
+        ]
+      });
+      yield* anthropicStream(MODELS["thiago-doutor"].id, messages, systemPrompt);
+      return;
+    }
+
+    messages.push({ role: "user", content: message || "Olá" });
+    yield* streamWithFallback(queue, messages, systemPrompt, MODELS[queue[0]]?.name || queue[0]);
+    return;
+  }
+
+  // ── Modelo específico escolhido pelo usuário ──────────────
+  const model = MODELS[resolvedKey] || MODELS["thiago-doutor"];
+
+  // Imagem: redireciona para Anthropic se provider não suporta
+  if (image && !["anthropic"].includes(model.provider)) {
+    yield `> 📷 *${model.name} não suporta imagens — redirecionando para 🎓 Thiago Doutor.*\n\n`;
+    resolvedKey = "thiago-doutor";
+  }
 
   const limitedHistory = model.provider === "anthropic"
     ? history.filter(m => m.content)
-    : normalizeHistory(history, 7000);
+    : limitHistory(history, 7000);
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -375,7 +695,7 @@ export const chatStream = async function* (message, history = [], image = null, 
   if (image) {
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
     const mimeType = image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg";
-    if (model.provider === "anthropic") {
+    if (MODELS[resolvedKey]?.provider === "anthropic") {
       messages.push({
         role: "user",
         content: [
@@ -383,83 +703,40 @@ export const chatStream = async function* (message, history = [], image = null, 
           { type: "text", text: message || "Analise esta imagem." }
         ]
       });
-    } else {
-      messages.push({
-        role: "user",
-        content: [
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } },
-          { type: "text", text: message || "Analise esta imagem." }
-        ]
-      });
     }
   } else {
-    messages.push({ role: "user", content: message || "Ola" });
+    messages.push({ role: "user", content: message || "Olá" });
   }
 
-  // FALLBACK INTELIGENTE: Anthropic falha → tenta Mistral
-  if (model.provider === "anthropic") {
-    try {
-      yield* anthropicStream(model.id, messages, systemPrompt);
-    } catch (err) {
-      console.error("[ANTHROPIC ERROR]", err.message || err);
-      yield `_(Thiago Doutor indisponivel — usando Thiago Jr como fallback)_\n\n`;
-      yield* mistralStream("mistral-small-latest", messages);
-    }
-  } else if (model.provider === "mistral") {
-    try {
-      yield* mistralStream(model.id, messages);
-    } catch (err) {
-      if (err.message && (err.message.includes("429") || err.message.includes("rate"))) {
-        yield `> 🔄 *${model.name} atingiu o limite — continuando com 🧠 Thiago Sênior.*\n\n`;
-        const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
-        yield* groqStream(MODELS["thiago-senior"].id, safe);
-      } else { throw err; }
-    }
-  } else if (model.provider === "cohere") {
-    try {
-      yield* cohereStream(model.id, messages, systemPrompt);
-    } catch (err) {
-      if (err.message && (err.message.includes("429") || err.message.includes("422") || err.message.includes("rate") || err.message.includes("NO_VALID"))) {
-        yield `> 🔄 *${model.name} atingiu o limite — continuando com ⚙️ Thiago Jr.*\n\n`;
-        const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
-        yield* mistralStream(MODELS["thiago-jr"].id, safe);
-      } else { throw err; }
-    }
-  } else {
-    const FALLBACK_QUEUE = ["thiago-analiza","thiago-jr","thiago-senior","thiago-doutor","thiago-especialista","thiago-supremo"];
-    const MODEL_NAMES = {"thiago-analiza":"🔎 Thiago Analiza","thiago-jr":"⚙️ Thiago Jr","thiago-senior":"🧠 Thiago Sênior","thiago-doutor":"🎓 Thiago Doutor","thiago-especialista":"🔬 Thiago Especialista","thiago-supremo":"👑 Thiago Supremo"};
-    const isRateError = (e) => e.message && (e.message.includes("413") || e.message.includes("429") || e.message.includes("rate") || e.message.includes("limit"));
-    const toText = (msgs) => msgs.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
-    const systemMsg = messages.find(m => m.role === "system");
-    const userMsg = messages[messages.length - 1];
-    const histMsgs = messages.filter(m => m.role !== "system").slice(0, -1);
-    const normalizeMsg = (m) => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")});
-    const reducedMessages = [systemMsg, ...histMsgs.slice(-3), userMsg].filter(Boolean).map(normalizeMsg);
-    let success = false;
-    try { yield* groqStream(model.id, messages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
-    if (!success) {
-      try { yield* groqStream(model.id, reducedMessages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
-    }
-    if (!success) {
-      const currentIndex = FALLBACK_QUEUE.indexOf(selectedKey);
-      const hasImage = image !== null;
-      let nextIndex = hasImage ? FALLBACK_QUEUE.indexOf("thiago-doutor") : currentIndex + 1;
-      if (nextIndex < 0 || nextIndex >= FALLBACK_QUEUE.length) {
-        yield `> ⚠️ *Todos os modelos estão no limite. Tente em alguns minutos.*\n\n`;
-        return;
-      }
-      const nextKey = FALLBACK_QUEUE[nextIndex];
-      const nextModel = MODELS[nextKey];
-      yield `> 🔄 *${MODEL_NAMES[selectedKey] || model.name} atingiu o limite — continuando com ${MODEL_NAMES[nextKey]}.*\n\n`;
-      const safe = toText(reducedMessages);
-      if (nextModel.provider === "anthropic") { yield* anthropicStream(nextModel.id, hasImage ? messages : safe, systemPrompt); }
-      else if (nextModel.provider === "mistral") { yield* mistralStream(nextModel.id, safe); }
-      else if (nextModel.provider === "cohere") { yield* cohereStream(nextModel.id, safe, systemPrompt); }
-      else { yield* groqStream(nextModel.id, safe); }
-    }
-  }
+  // Executa com fallback para modelos existentes
+  const existingFallbacks = {
+    "thiago-doutor":       ["thiago-doutor",       "thiago-jr"],
+    "thiago-especialista": ["thiago-especialista",  "thiago-doutor", "thiago-jr"],
+    "thiago-supremo":      ["thiago-supremo",       "thiago-especialista", "thiago-doutor"],
+    "thiago-analiza":      ["thiago-analiza",       "thiago-jr"],
+    "thiago-jr":           ["thiago-jr",            "thiago-senior"],
+    "thiago-senior":       ["thiago-senior",        "thiago-jr"],
+  };
+
+  const orFallback = {
+    "or-qwen3-coder": ["or-qwen3-coder", "or-north-mini", "or-gpt-oss", "thiago-senior"],
+    "or-north-mini":  ["or-north-mini",  "or-laguna",     "or-gpt-oss", "thiago-senior"],
+    "or-laguna":      ["or-laguna",      "or-gpt-oss",    "thiago-senior"],
+    "or-kimi-k3":     ["or-kimi-k3",     "or-qwen3-coder","thiago-senior"],
+    "or-gpt-oss":     ["or-gpt-oss",     "thiago-senior", "thiago-jr"],
+    "or-llama":       ["or-llama",       "or-gpt-oss",    "thiago-senior"],
+    "or-nemotron":    ["or-nemotron",    "or-owl",        "or-llama"],
+    "or-owl":         ["or-owl",         "or-nemotron",   "or-llama"],
+    "or-kimi-k27":    ["or-kimi-k27",    "thiago-especialista"],
+  };
+
+  const queue = existingFallbacks[resolvedKey] || orFallback[resolvedKey] || [resolvedKey];
+  yield* streamWithFallback(queue, messages, systemPrompt, model.name);
 };
 
+// ============================================================
+// HELPERS exportados
+// ============================================================
 export const chat = async (message, history = [], image = null, modelKey = "auto", memory = null, studyMode = false) => {
   let fullResponse = "";
   for await (const token of chatStream(message, history, image, modelKey, memory, studyMode)) {
@@ -479,20 +756,16 @@ export const extractMemoryFacts = async (userMessage, assistantResponse) => {
           { role: "system", content: `Voce e um extrator de fatos. Analise a conversa e extraia APENAS fatos pessoais importantes sobre o usuario. Retorne APENAS JSON valido: [{"key":"nome_do_fato","value":"valor"}]. Se nao houver fatos, retorne [].` },
           { role: "user", content: `Usuario disse: "${userMessage}"\nAssistente respondeu: "${assistantResponse.substring(0, 500)}"` }
         ],
-        stream: false,
-        temperature: 0.3,
-        max_tokens: 500
+        stream: false, temperature: 0.3, max_tokens: 500
       }),
       signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) return [];
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || "[]";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch { return []; }
 };
 
 export const checkOllamaHealth = async () => true;
 export const checkWhisperHealth = async () => false;
-
