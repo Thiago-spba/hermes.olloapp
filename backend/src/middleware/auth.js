@@ -7,15 +7,15 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: "Token não fornecido ou inválido." })
     }
 
-    // Extrai a string do token após o 'Bearer '
-    const token = authHeader.split("Bearer ")?.trim()
+    // Extrai o token com segurança ignorando os 7 caracteres de 'Bearer '
+    const token = authHeader.substring(7).trim()
     if (!token) {
       return res.status(401).json({ error: "Token ausente." })
     }
 
     const decoded = await admin.auth().verifyIdToken(token)
     
-    // Popula 'id' e 'uid' com os dados do usuário autenticado
+    // Popula 'id' e 'uid' do usuário autenticado
     req.user = { 
       id: decoded.uid, 
       uid: decoded.uid, 
