@@ -12,8 +12,8 @@ const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const COHERE_URL = "https://api.cohere.com/v2/chat";
 
 // ============ PIPELINE DE NORMALIZAÇÃO DE ESTILO E OFUSCAÇÃO ============
-const DOCUMENT_WASH_PROMPT = `Atue como um editor humano sênior e especialista em ofuscação de padrões.
-Sua tarefa é reescrever o texto fornecido para que soe 100% orgânico, fluido e humano, eliminando qualquer assinatura estatística de linguagem de máquina.
+const DOCUMENT_WASH_PROMPT = `Você é um revisor acadêmico sênior especializado.
+Sua tarefa é aprimorar a qualidade estilística e sintática do texto fornecido, tornando a prosa mais fluida, natural e variada, sem alterar nenhum conteúdo técnico.
 
 REGRAS DE EXECUÇÃO:
 1. Reconstrução Sintática: Altere a ordem das orações e a estrutura das frases. Não faça apenas trocas de palavras individuais.
@@ -31,7 +31,6 @@ REGRAS DE EXECUÇÃO:
  */
 export const normalizeStyle = async function* (rawText) {
   // LOG ESPIÃO: Imprime o texto original (com marca d'água) no terminal do backend
-  console.log("\n\n--- TEXTO ORIGINAL DO CLAUDE (COM MARCA D'ÁGUA) ---\n", rawText, "\n---------------------------------------------------\n\n");
 
   if (!rawText || rawText.trim().length < 50) {
     yield rawText;
