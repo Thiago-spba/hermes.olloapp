@@ -104,7 +104,7 @@ const buildSystemPrompt = (memory = null, studyMode = false) => {
   return prompt;
 };
 
-// Fila de Fallback Gratuita (Groq 27B -> Groq 120B -> Groq 20B -> Mistral -> Cohere)
+// Fila de Fallback Gratuita Principal (Groq 27B -> Groq 120B -> Groq 20B -> Mistral -> Cohere)
 const FREE_QUEUE = [
   "thiago-senior",
   "thiago-senior-120b",
@@ -114,7 +114,7 @@ const FREE_QUEUE = [
 ];
 
 // ============================================================
-// PROVEDORES SSE
+// PROVEDORES SSE (COM FILTRO DE <think> E PONTO INICIAL)
 // ============================================================
 const groqStream = async function* (modelId, messages) {
   if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY ausente no .env");
@@ -143,6 +143,8 @@ const groqStream = async function* (modelId, messages) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let inThinkBlock = false;
+  let isFirstToken = true;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -160,7 +162,30 @@ const groqStream = async function* (modelId, messages) {
       if (trimmed.startsWith("data: ")) {
         try {
           const json = JSON.parse(trimmed.slice(6));
-          const token = json.choices?.[0]?.delta?.content;
+          let token = json.choices?.[0]?.delta?.content || "";
+          
+          if (!token) continue;
+
+          // 1. Filtra o bloco de raciocínio <think>...</think>
+          if (token.includes("<think>")) {
+            inThinkBlock = true;
+            token = token.split("<think>")[0];
+          }
+          if (inThinkBlock) {
+            if (token.includes("</think>")) {
+              inThinkBlock = false;
+              token = token.split("</think>") || "";
+            } else {
+              continue;
+            }
+          }
+
+          // 2. Remove ponto ou quebra de linha residual no início da resposta
+          if (isFirstToken && token) {
+            token = token.replace(/^[.\s\n]+/, "");
+            if (token) isFirstToken = false;
+          }
+
           if (token) yield token;
         } catch {}
       }
@@ -194,6 +219,8 @@ const mistralStream = async function* (modelId, messages) {
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let isFirstToken = true;
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -204,8 +231,14 @@ const mistralStream = async function* (modelId, messages) {
     for (const line of lines) {
       try {
         const json = JSON.parse(line.replace("data: ", ""));
-        const token = json.choices?.[0]?.delta?.content;
-        if (token) yield token;
+        let token = json.choices?.[0]?.delta?.content;
+        if (token) {
+          if (isFirstToken) {
+            token = token.replace(/^[.\s\n]+/, "");
+            if (token) isFirstToken = false;
+          }
+          if (token) yield token;
+        }
       } catch {}
     }
   }
@@ -245,6 +278,7 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let isFirstToken = true;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -260,8 +294,14 @@ const cohereStream = async function* (modelId, messages, systemPrompt) {
       try {
         const json = JSON.parse(cleanLine);
         if (json.type === "content-delta") {
-          const token = json.delta?.message?.content?.text;
-          if (token) yield token;
+          let token = json.delta?.message?.content?.text;
+          if (token) {
+            if (isFirstToken) {
+              token = token.replace(/^[.\s\n]+/, "");
+              if (token) isFirstToken = false;
+            }
+            if (token) yield token;
+          }
         }
       } catch {}
     }
@@ -299,6 +339,8 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let isFirstToken = true;
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -310,8 +352,14 @@ const anthropicStream = async function* (modelId, messages, systemPrompt) {
       try {
         const json = JSON.parse(line.replace("data: ", ""));
         if (json.type === "content_block_delta") {
-          const token = json.delta?.text;
-          if (token) yield token;
+          let token = json.delta?.text;
+          if (token) {
+            if (isFirstToken) {
+              token = token.replace(/^[.\s\n]+/, "");
+              if (token) isFirstToken = false;
+            }
+            if (token) yield token;
+          }
         }
       } catch {}
     }
@@ -375,12 +423,10 @@ export const chatStream = async function* (
 ) {
   const systemPrompt = buildSystemPrompt(memory, studyMode);
 
-  // Se houver imagem:
   if (image) {
     const base64Data = image.includes(",") ? image.split(",") : image;
     const mimeType = image.includes("data:") ? image.split(";")[0].replace("data:", "") : "image/jpeg";
 
-    // Se escolheu Claude explicitamente ou usa fallback
     const anthropicMessages = [
       { role: "system", content: systemPrompt },
       ...history,
@@ -401,22 +447,18 @@ export const chatStream = async function* (
     return;
   }
 
-  // Se for texto:
   const messages = [
     { role: "system", content: systemPrompt },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: message || "Olá" }
   ];
 
-  // SE ESCOLHEU CLAUDE MANUALMENTE (PAGO):
   if (["thiago-doutor", "thiago-especialista", "thiago-supremo"].includes(modelKey)) {
     const queue = [modelKey, "thiago-senior", "thiago-jr"];
     yield* streamWithFallback(queue, messages, systemPrompt);
     return;
   }
 
-  // CASO CONTRÁRIO (PADRÃO GRATUITO):
-  // Groq Qwen 27B -> Groq GPT 120B -> Groq GPT 20B -> Mistral -> Cohere
   yield* streamWithFallback(FREE_QUEUE, messages, systemPrompt);
 };
 
