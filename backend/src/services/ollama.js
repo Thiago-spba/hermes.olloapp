@@ -38,7 +38,7 @@ export const normalizeStyle = async function* (rawText) {
         "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         messages: [
           { role: "system", content: DOCUMENT_WASH_PROMPT },
           { role: "user",   content: rawText }
@@ -82,10 +82,10 @@ export const normalizeStyle = async function* (rawText) {
 export const MODELS = {
   "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",       free: true },
   "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
-  "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
+  "thiago-senior":      { provider: "groq",      id: "openai/gpt-oss-120b", name: "🧠 Thiago Sênior",       free: true },
   "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5-20251001",        name: "🎓 Thiago Doutor",       free: false },
   "thiago-especialista":{ provider: "anthropic", id: "claude-sonnet-4-6",       name: "🔬 Thiago Especialista", free: false },
-  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-7",         name: "👑 Thiago Supremo",      free: false },
+  "thiago-supremo":     { provider: "anthropic", id: "claude-opus-4-8",         name: "👑 Thiago Supremo",      free: false },
 };
 
 const DEFAULT_MODEL = "thiago-doutor";
