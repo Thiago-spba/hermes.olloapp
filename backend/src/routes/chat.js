@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, images, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext } = req.body
+    const { message, images, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext, humanize } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -80,21 +80,33 @@ router.post("/", auth, validateChat, async (req, res) => {
 
     // ── FASE 1: acumula resposta bruta do modelo primário (sem enviar ao frontend) ──
     let fullResponse = ""
-    for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
-      fullResponse += token
-    }
 
-    // ── FASE 2: normaliza via Groq com streaming e repassa tokens ao frontend ──
-    let normalizedResponse = ""
-    for await (const token of normalizeStyle(fullResponse)) {
-      normalizedResponse += token
-      res.write(`data: ${JSON.stringify({ token })}
+    if (humanize) {
+      // FASE 1: acumula resposta bruta do modelo primario (sem enviar ao frontend)
+      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
+        fullResponse += token
+      }
+
+      // FASE 2: normaliza via Groq com streaming e repassa tokens ao frontend
+      let normalizedResponse = ""
+      for await (const token of normalizeStyle(fullResponse)) {
+        normalizedResponse += token
+        res.write(`data: ${JSON.stringify({ token })}
 
 `)
+      }
+      fullResponse = normalizedResponse || fullResponse
+    } else {
+      // Humanizacao desligada (padrao): streaming direto da resposta do modelo primario
+      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
+        fullResponse += token
+        res.write(`data: ${JSON.stringify({ token })}
+
+`)
+      }
     }
 
-    // Salva no banco a versão normalizada (fallback para bruta se normalização falhou)
-    const responseToSave = normalizedResponse || fullResponse
+    const responseToSave = fullResponse
     saveMessage(userId, "assistant", responseToSave)
     res.write(`data: ${JSON.stringify({ done: true, modelKey: modelKey || "auto" })}
 

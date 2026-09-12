@@ -14,6 +14,8 @@ const Header = ({
   onToggleStudyMode, // ✅ ADICIONADO
   docMode,
   onToggleDocMode,
+  humanize,
+  onToggleHumanize,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [voices, setVoices] = useState([]);
@@ -949,6 +951,66 @@ const Header = ({
                     }}
                   >
                     {wakeLock ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Respostas Humanizadas -- reescreve o texto com tom mais natural (usa mais tempo/tokens) */}
+                <button
+                  onClick={() => {
+                    onToggleHumanize?.();
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  title="Reescreve a resposta com um tom mais natural antes de exibir -- consome mais tempo e tokens"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: humanize
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: humanize
+                      ? isDark
+                        ? "#00e5aa"
+                        : "#007a55"
+                      : c.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>✍️</span>
+                    <span>Respostas Humanizadas</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: humanize
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: humanize ? "#00e5aa" : c.sub,
+                      border: humanize ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {humanize ? "ON" : "OFF"}
                   </span>
                 </button>
 

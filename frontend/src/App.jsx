@@ -193,6 +193,14 @@ const App = () => {
   }, [docMode]);
   const toggleDocMode = () => setDocMode((prev) => !prev);
 
+  const [humanize, setHumanize] = useState(() => {
+    return localStorage.getItem("hermes-humanize") === "1";
+  });
+  useEffect(() => {
+    localStorage.setItem("hermes-humanize", humanize ? "1" : "0");
+  }, [humanize]);
+  const toggleHumanize = () => setHumanize((prev) => !prev);
+
   const [docTitle, setDocTitle] = useState(() => {
     return localStorage.getItem("hermes-doc-title") || "";
   });
@@ -223,7 +231,7 @@ const App = () => {
     changeModel,
     activeProject,
     setActiveProject,
-  } = useChat(studyMode);
+  } = useChat(studyMode, humanize);
   const showWelcomeScreen =
     !isLoading && messages.filter((m) => m.role === "user").length === 0;
 
@@ -463,6 +471,8 @@ const App = () => {
           onToggleStudyMode={setStudyMode}
           docMode={docMode}
           onToggleDocMode={toggleDocMode}
+          humanize={humanize}
+          onToggleHumanize={toggleHumanize}
         />
       </div>
       {activeProject && (

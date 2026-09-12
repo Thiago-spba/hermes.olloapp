@@ -12,15 +12,8 @@ const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const COHERE_URL = "https://api.cohere.com/v2/chat";
 
 // ============ PIPELINE DE NORMALIZAÇÃO DE ESTILO E OFUSCAÇÃO ============
-const DOCUMENT_WASH_PROMPT = `Você é um revisor acadêmico sênior especializado.
-Sua tarefa é aprimorar a qualidade estilística e sintática do texto fornecido, tornando a prosa mais fluida, natural e variada, sem alterar nenhum conteúdo técnico.
-
-REGRAS DE EXECUÇÃO:
-1. Reconstrução Sintática: Altere a ordem das orações e a estrutura das frases. Não faça apenas trocas de palavras individuais.
-2. Vocabulário: Substitua jargões repetitivos e verbos comuns por sinônimos precisos no Português do Brasil.
-3. Remoção de Vícios: Elimine conectivos robóticos clássicos (ex: "É importante notar que", "Em resumo", "Além disso", "Primeiramente").
-4. IMUTABILIDADE TÉCNICA ABSOLUTA: Nunca altere comandos de código, matrizes, tabelas Markdown, números, datas, equações matemáticas ou nomes próprios.
-5. Saída Direta: Não inclua introduções, notas ou confirmações. Entregue estritamente o texto revisado.`;
+const DOCUMENT_WASH_PROMPT = `Atue como um revisor acadêmico sênior e especialista em engenharia de computação. Sua tarefa exclusiva é reescrever o relatório técnico fornecido para que a prosa soe 100% humana, orgânica e fluida, eliminando qualquer assinatura estatística de linguagem de máquina. 
+REGRAS DE EXECUÇÃO: Reconstrução Sintática: Altere a ordem das orações e a estrutura das frases. Faça a engenharia reversa do parágrafo e escreva-o de outra forma, mantendo o sentido. Não faça apenas trocas de sinônimos isolados. Tom Acadêmico: Mantenha a formalidade e a objetividade exigidas em um documento universitário. Remoção de Vícios de IA: Elimine conectivos robóticos e transições padronizadas (ex: "É importante notar que", "Em resumo", "Vale ressaltar"). IMUTABILIDADE TÉCNICA ABSOLUTA.`;
 
 /**
  * Normaliza o estilo da resposta via Groq (Llama 3.3 70B) com streaming.
@@ -87,7 +80,7 @@ export const normalizeStyle = async function* (rawText) {
 };
 
 export const MODELS = {
-  "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",      free: true },
+  "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",       free: true },
   "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
   "thiago-senior":      { provider: "groq",      id: "llama-3.3-70b-versatile", name: "🧠 Thiago Sênior",       free: true },
   "thiago-doutor":      { provider: "anthropic", id: "claude-haiku-4-5-20251001",        name: "🎓 Thiago Doutor",       free: false },
@@ -415,7 +408,7 @@ export const chatStream = async function* (message, history = [], images = [], m
     return result;
   };
 
-// ALOCAÇÃO DINÂMICA DE MEMÓRIA: Respeita o limite físico de cada provedor
+  // ALOCAÇÃO DINÂMICA DE MEMÓRIA: Respeita o limite físico de cada provedor
   let maxContextWindow = 7000; // Fallback ultrasseguro
   if (model.provider === "groq") maxContextWindow = 100000;      // Llama 3.3 tem teto de 128k
   else if (model.provider === "cohere") maxContextWindow = 90000; // Command-R tem teto de 128k
