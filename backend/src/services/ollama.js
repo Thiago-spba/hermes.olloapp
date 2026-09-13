@@ -103,6 +103,15 @@ export const normalizeStyle = async function* (rawText) {
   yield rawText;
 };
 
+// Detecta respostas curtas de recusa (o modelo nega o pedido sem dar erro
+// tecnico nenhum) para poder tentar outro provedor automaticamente, do
+// mesmo jeito que ja fazemos quando bate limite de uso.
+const REFUSAL_REGEX = /^(desculpe|lamento|sinto muito|infelizmente,?\s*(mas\s*)?n[ãa]o|n[ãa]o posso (ajudar|atender|fazer isso|continuar|escrever|prosseguir)|n[ãa]o consigo ajudar)/i;
+const isRefusalText = (text) => {
+  const t = (text || "").trim();
+  return t.length > 0 && t.length < 200 && REFUSAL_REGEX.test(t);
+};
+
 export const MODELS = {
   "thiago-analiza":     { provider: "cohere",    id: "command-a-03-2025",       name: "🔎 Thiago Analiza",       free: true },
   "thiago-jr":          { provider: "mistral",   id: "mistral-small-latest",    name: "⚙️ Thiago Jr",           free: true },
@@ -479,24 +488,42 @@ export const chatStream = async function* (message, history = [], images = [], m
       yield* mistralStream("mistral-small-latest", messages);
     }
   } else if (model.provider === "mistral") {
+    let buffer = "";
+    let recusou = false;
     try {
-      yield* mistralStream(model.id, messages);
+      for await (const token of mistralStream(model.id, messages)) { buffer += token; yield token; }
+      recusou = isRefusalText(buffer);
     } catch (err) {
       if (err.message && (err.message.includes("429") || err.message.includes("rate"))) {
-        yield `> 🔄 *${model.name} atingiu o limite — continuando com 🧠 Thiago Sênior.*\n\n`;
+        yield `\n\n> 🔄 *${model.name} atingiu o limite — continuando com 🧠 Thiago Sênior.*\n\n`;
         const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
         yield* groqStream(MODELS["thiago-senior"].id, safe);
+        return;
       } else { throw err; }
     }
+    if (recusou) {
+      yield `\n\n> 🔄 *${model.name} recusou o pedido — continuando com 🧠 Thiago Sênior.*\n\n`;
+      const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
+      yield* groqStream(MODELS["thiago-senior"].id, safe);
+    }
   } else if (model.provider === "cohere") {
+    let buffer = "";
+    let recusou = false;
     try {
-      yield* cohereStream(model.id, messages, systemPrompt);
+      for await (const token of cohereStream(model.id, messages, systemPrompt)) { buffer += token; yield token; }
+      recusou = isRefusalText(buffer);
     } catch (err) {
       if (err.message && (err.message.includes("429") || err.message.includes("422") || err.message.includes("rate") || err.message.includes("NO_VALID"))) {
-        yield `> 🔄 *${model.name} atingiu o limite — continuando com ⚙️ Thiago Jr.*\n\n`;
+        yield `\n\n> 🔄 *${model.name} atingiu o limite — continuando com ⚙️ Thiago Jr.*\n\n`;
         const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
         yield* mistralStream(MODELS["thiago-jr"].id, safe);
+        return;
       } else { throw err; }
+    }
+    if (recusou) {
+      yield `\n\n> 🔄 *${model.name} recusou o pedido — continuando com ⚙️ Thiago Jr.*\n\n`;
+      const safe = messages.map(m => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")}));
+      yield* mistralStream(MODELS["thiago-jr"].id, safe);
     }
   } else {
     const FALLBACK_QUEUE = ["thiago-analiza","thiago-jr","thiago-senior","thiago-doutor","thiago-especialista","thiago-supremo"];
@@ -509,21 +536,29 @@ export const chatStream = async function* (message, history = [], images = [], m
     const normalizeMsg = (m) => ({...m, content: typeof m.content === "string" ? m.content : Array.isArray(m.content) ? m.content.filter(c => c.type === "text").map(c => c.text).join(" ") || "[imagem]" : String(m.content || "")});
     const reducedMessages = [systemMsg, ...histMsgs.slice(-3), userMsg].filter(Boolean).map(normalizeMsg);
     let success = false;
-    try { yield* groqStream(model.id, messages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
+    let buffer = "";
+    try {
+      for await (const token of groqStream(model.id, messages)) { buffer += token; yield token; }
+      success = !isRefusalText(buffer);
+    } catch (err) { if (!isRateError(err)) throw err; }
     if (!success) {
-      try { yield* groqStream(model.id, reducedMessages); success = true; } catch (err) { if (!isRateError(err)) throw err; }
+      buffer = "";
+      try {
+        for await (const token of groqStream(model.id, reducedMessages)) { buffer += token; yield token; }
+        success = !isRefusalText(buffer);
+      } catch (err) { if (!isRateError(err)) throw err; }
     }
     if (!success) {
       const currentIndex = FALLBACK_QUEUE.indexOf(selectedKey);
       const hasImage = imageList.length > 0;
       let nextIndex = hasImage ? FALLBACK_QUEUE.indexOf("thiago-doutor") : currentIndex + 1;
       if (nextIndex < 0 || nextIndex >= FALLBACK_QUEUE.length) {
-        yield `> ⚠️ *Todos os modelos estão no limite. Tente em alguns minutos.*\n\n`;
+        yield `\n\n> ⚠️ *Todos os modelos estão no limite. Tente em alguns minutos.*\n\n`;
         return;
       }
       const nextKey = FALLBACK_QUEUE[nextIndex];
       const nextModel = MODELS[nextKey];
-      yield `> 🔄 *${MODEL_NAMES[selectedKey] || model.name} atingiu o limite — continuando com ${MODEL_NAMES[nextKey]}.*\n\n`;
+      yield `\n\n> 🔄 *${MODEL_NAMES[selectedKey] || model.name} não conseguiu responder — continuando com ${MODEL_NAMES[nextKey]}.*\n\n`;
       const safe = toText(reducedMessages);
       if (nextModel.provider === "anthropic") { yield* anthropicStream(nextModel.id, hasImage ? messages : safe, systemPrompt); }
       else if (nextModel.provider === "mistral") { yield* mistralStream(nextModel.id, safe); }
