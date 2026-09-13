@@ -22,6 +22,15 @@ REGRAS DE EXECUÇÃO: Reconstrução Sintática: Altere a ordem das orações e 
  * @param {string} rawText - Resposta bruta do modelo primário
  * @yields {string} tokens normalizados
  */
+// Provedores tentados, em ordem, para humanizar o texto (mesmo prompt e
+// temperatura em todos -- so muda quem processa). Ambos gratuitos, sem
+// custo extra. Se o primeiro falhar antes de escrever qualquer coisa,
+// tenta o proximo.
+const NORMALIZE_STYLE_ATTEMPTS = [
+  { provider: "groq", url: GROQ_URL, apiKey: GROQ_API_KEY, model: "openai/gpt-oss-120b" },
+  { provider: "mistral", url: MISTRAL_URL, apiKey: MISTRAL_API_KEY, model: "mistral-small-latest" },
+];
+
 export const normalizeStyle = async function* (rawText) {
   // LOG ESPIÃO: Imprime o texto original (com marca d'água) no terminal do backend
 
@@ -30,53 +39,68 @@ export const normalizeStyle = async function* (rawText) {
     return;
   }
 
-  try {
-    const response = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-oss-120b",
-        messages: [
-          { role: "system", content: DOCUMENT_WASH_PROMPT },
-          { role: "user",   content: rawText }
-        ],
-        stream: true,
-        temperature: 0.85
-        // Trava artificial de max_tokens removida para permitir máxima geração
-      }),
-      signal: AbortSignal.timeout(45000)
-    });
+  for (const attempt of NORMALIZE_STYLE_ATTEMPTS) {
+    let jaEscreveu = false;
+    try {
+      const response = await fetch(attempt.url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${attempt.apiKey}`
+        },
+        body: JSON.stringify({
+          model: attempt.model,
+          messages: [
+            { role: "system", content: DOCUMENT_WASH_PROMPT },
+            { role: "user",   content: rawText }
+          ],
+          stream: true,
+          temperature: 0.85
+          // Trava artificial de max_tokens removida para permitir máxima geração
+        }),
+        signal: AbortSignal.timeout(120000)
+      });
 
-    if (!response.ok) {
-      console.warn(`[normalizeStyle] Groq retornou ${response.status}. Usando texto original.`);
-      yield rawText;
-      return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
-      for (const line of lines) {
-        try {
-          const json = JSON.parse(line.replace("data: ", ""));
-          const token = json.choices?.[0]?.delta?.content;
-          if (token) yield token;
-        } catch {}
+      if (!response.ok) {
+        console.warn(`[normalizeStyle] ${attempt.provider} retornou ${response.status}. Tentando proximo provedor.`);
+        continue;
       }
-    }
 
-  } catch (error) {
-    console.error("[normalizeStyle ERROR]:", error.message);
-    yield rawText; // fallback de segurança — nunca quebra a resposta
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n").filter(l => l.startsWith("data: ") && l !== "data: [DONE]");
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line.replace("data: ", ""));
+            const token = json.choices?.[0]?.delta?.content;
+            if (token) {
+              jaEscreveu = true;
+              yield token;
+            }
+          } catch {}
+        }
+      }
+
+      if (jaEscreveu) return; // sucesso -- texto humanizado entregue por completo
+      console.warn(`[normalizeStyle] ${attempt.provider} nao retornou nenhum texto. Tentando proximo provedor.`);
+    } catch (error) {
+      if (jaEscreveu) {
+        // Ja tinha comecado a entregar texto humanizado -- trocar de provedor
+        // agora duplicaria o conteudo. Aceita o resultado parcial e para aqui.
+        console.error(`[normalizeStyle ERROR - ${attempt.provider}, apos iniciar o texto]:`, error.message);
+        return;
+      }
+      console.error(`[normalizeStyle ERROR - ${attempt.provider}]:`, error.message);
+    }
   }
+
+  // Nenhum provedor conseguiu humanizar -- devolve o texto original (nunca quebra a resposta)
+  yield rawText;
 };
 
 export const MODELS = {

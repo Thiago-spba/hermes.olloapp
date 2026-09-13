@@ -19,8 +19,8 @@ export const validateChat = [
     .isString()
     .withMessage('Mensagem deve ser texto.')
     .trim()
-    .isLength({ min: 0, max: 10000 })
-    .withMessage('Mensagem muito longa (max 10.000 caracteres).')
+    .isLength({ min: 0, max: 50000 })
+    .withMessage('Mensagem muito longa (max 50.000 caracteres).')
     .customSanitizer(value => sanitizeText(value)),
   
   body('audio')
