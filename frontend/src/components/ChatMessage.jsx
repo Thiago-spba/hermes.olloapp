@@ -6,8 +6,26 @@ import rehypeKatex from "rehype-katex";
 
 // jsPDF e uma biblioteca pesada -- carregada sob demanda so quando o
 // usuario clica em baixar, em vez de inflar o bundle inicial pra todo mundo
-const handleExportPdf = async (message) => {
+const handleExportPdf = async (message, academicTemplateMode, conversation) => {
   const { exportMessageToPdf } = await import("../utils/exportPdf");
+
+  if (academicTemplateMode) {
+    try {
+      const { extractTemplateFields } = await import("../services/api");
+      const conversationText = (conversation || [])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => `${m.role === "user" ? "Usuario" : "Hermes"}: ${m.content || ""}`)
+        .join("\n")
+        .substring(0, 6000);
+
+      const coverTemplate = await extractTemplateFields(conversationText, []);
+      exportMessageToPdf(message, { coverTemplate });
+      return;
+    } catch (err) {
+      console.error("Falha ao extrair dados do template, exportando PDF simples:", err);
+    }
+  }
+
   exportMessageToPdf(message, { title: "HERMES" });
 };
 
@@ -176,7 +194,7 @@ const FileCard = ({ file, isDark }) => {
   );
 };
 
-const ChatMessage = memo(({ message, isDark, docMode = false }) => {
+const ChatMessage = memo(({ message, isDark, docMode = false, academicTemplateMode = false, conversation = [] }) => {
   const isUser = message.role === "user";
   const isError = message.role === "error";
   const isThinking = message.role === "thinking";
@@ -407,7 +425,7 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                     {speaking ? (paused ? "▶" : "⏸") : "🔊"}
                   </button>
                   <button
-                    onClick={() => handleExportPdf(message)}
+                    onClick={() => handleExportPdf(message, academicTemplateMode, conversation)}
                     title="Baixar esta resposta em PDF"
                     style={{
                       background: "transparent",

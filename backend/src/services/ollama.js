@@ -542,5 +542,43 @@ export const extractMemoryFacts = async (userMessage, assistantResponse) => {
   } catch { return []; }
 };
 
+// Extrai os campos de cabecalho de um trabalho academico (fase, titulo,
+// turma, professor) a partir da conversa, e sugere qual template usar
+// dentre os disponiveis. Nao salva nada no banco de conversas -- e so leitura.
+export const extractTemplateFields = async (conversationText, availableTemplates = []) => {
+  try {
+    const templatesInfo = (availableTemplates.length
+      ? availableTemplates
+      : [{ id: "celso-lisboa", name: "Centro Universitario Celso Lisboa", description: "Papel timbrado padrao de atividades e trabalhos da Celso Lisboa." }]
+    ).map((t) => `- ${t.id}: ${t.name} — ${t.description}`).join("\n");
+
+    const response = await fetch(MISTRAL_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${MISTRAL_API_KEY}` },
+      body: JSON.stringify({
+        model: "mistral-small-latest",
+        messages: [
+          {
+            role: "system",
+            content: `Voce e um extrator de dados de trabalhos academicos. Analise a conversa abaixo e extraia os dados do cabecalho do trabalho, se houver.\nTemplates disponiveis:\n${templatesInfo}\nRetorne APENAS JSON valido no formato: {"templateId":"...","fase":"...","tituloTrabalho":"...","turma":"...","professor":"..."}.\nEscolha o templateId mais adequado dentre os disponiveis (se nao tiver certeza, use o primeiro da lista).\nSe nao encontrar um campo, deixe como string vazia. Nunca invente dados que nao apareceram na conversa.`,
+          },
+          { role: "user", content: conversationText.substring(0, 4000) },
+        ],
+        stream: false,
+        temperature: 0.2,
+        max_tokens: 300,
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!response.ok) return {};
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || "{}";
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch {
+    return {};
+  }
+};
+
 export const checkOllamaHealth = async () => true;
 export const checkWhisperHealth = async () => false;

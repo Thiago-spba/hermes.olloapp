@@ -1,7 +1,7 @@
 import { Router } from "express"
 import auth from "../middleware/auth.js"
 import { validateChat } from "../middleware/sanitize.js"
-import { chatStream, extractMemoryFacts, normalizeStyle } from "../services/ollama.js"
+import { chatStream, extractMemoryFacts, normalizeStyle, extractTemplateFields } from "../services/ollama.js"
 import { transcribeAudio } from "../services/whisper.js"
 import { saveMessage, getKnowledgeChunks, getMemoryAsText, saveMemory, getMemory, getHistory, clearHistory } from "../services/database.js"
 import { findRelevantChunks } from "../services/pdfService.js"
@@ -155,6 +155,22 @@ router.get("/memory", auth, (req, res) => {
     res.json({ memories })
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar memorias." })
+  }
+})
+
+// Extrai os dados do cabecalho (fase, titulo, turma, professor) e sugere o
+// template mais adequado a partir do texto da conversa. Nao salva nada no
+// banco de conversas -- e so uma chamada de leitura pra IA.
+router.post("/extract-template-fields", auth, async (req, res) => {
+  try {
+    const { conversationText, availableTemplates } = req.body
+    if (!conversationText || typeof conversationText !== "string") {
+      return res.status(400).json({ error: "conversationText obrigatorio" })
+    }
+    const fields = await extractTemplateFields(conversationText, availableTemplates || [])
+    res.json(fields)
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao extrair dados do template" })
   }
 })
 

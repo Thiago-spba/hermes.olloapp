@@ -14,6 +14,8 @@ const Header = ({
   onToggleStudyMode, // ✅ ADICIONADO
   docMode,
   onToggleDocMode,
+  academicTemplateMode,
+  onToggleAcademicTemplateMode,
   humanize,
   onToggleHumanize,
 }) => {
@@ -623,6 +625,65 @@ const Header = ({
                     {studyMode ? "ON" : "OFF"}
                   </span>
                 </button>
+                <button
+                  onClick={() => {
+                    onToggleAcademicTemplateMode?.(!academicTemplateMode);
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  title="Ao gerar PDF, usa o papel timbrado da faculdade com dados extraidos automaticamente da conversa"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: academicTemplateMode
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: academicTemplateMode
+                      ? isDark
+                        ? "#00e5aa"
+                        : "#007a55"
+                      : c.text,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span style={{ fontSize: "18px" }}>🎓</span>
+                    <span>Template Acadêmico</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: academicTemplateMode
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: academicTemplateMode ? "#00e5aa" : c.sub,
+                      border: academicTemplateMode ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {academicTemplateMode ? "ON" : "OFF"}
+                  </span>
+                </button>
+
 
                 {/* Modo Documento — mostra a conversa como pagina de PDF */}
                 <button

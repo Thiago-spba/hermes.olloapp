@@ -85,6 +85,22 @@ export const sendMessage = async (message, history = [], images = [], onToken = 
   return fullResponse
 }
 
+export const extractTemplateFields = async (conversationText, availableTemplates = []) => {
+  const headers = await authHeaders(true)
+  const response = await fetch(`${API_URL}/api/chat/extract-template-fields`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ conversationText, availableTemplates }),
+  })
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error(err.error || `Erro ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export const uploadPDF = async (file) => {
   const headers = await authHeaders(false)
   const formData = new FormData()

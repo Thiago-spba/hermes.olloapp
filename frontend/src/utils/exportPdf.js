@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getTemplate } from "./pdfTemplates.js";
 
 // Padrão ABNT: Margens Superior e Esquerda 3cm (30mm), Inferior e Direita 2cm (20mm)
 const MARGIN_TOP = 30;
@@ -36,14 +37,39 @@ const stripInlineMarkdown = (text) =>
     .replace(/`(.+?)`/g, "$1")
     .replace(/^#+\s*/, "");
 
+// Desenha o papel timbrado do template escolhido (logo + barra + rodape) —
+// chamado na 1a pagina e em toda pagina nova. O layout de cada template
+// (imagem de fundo + cabecalho) vem do cadastro em pdfTemplates.js.
+const drawPageBackground = (doc, template) => {
+  doc.addImage(template.background, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+};
+
 // Monta o documento PDF e retorna a instancia jsPDF (sem salvar/baixar)
+// opts.coverTemplate (opcional): { curso, turma, registroAcademico, professor, nome, fase, tituloTrabalho }
+// Quando presente, aplica o papel timbrado da Celso Lisboa em todas as paginas
+// e o cabecalho de identificacao na primeira, no lugar do titulo simples antigo.
 export const buildMessagePdf = (message, opts = {}) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const useTemplate = Boolean(opts.coverTemplate);
   let y = MARGIN_TOP;
 
-  // Insere título apenas se explicitamente solicitado (sem marcações fixas do sistema)
+  if (useTemplate) {
+    // opts.coverTemplate pode incluir um templateId (qual template usar) alem
+    // dos campos variaveis (fase, tituloTrabalho, turma, professor, etc.);
+    // os campos fixos de cada template (curso, RA, nome) vem do cadastro.
+    const { templateId, ...variableFields } = opts.coverTemplate;
+    const template = getTemplate(templateId);
+    const fields = { ...template.defaultFields, ...variableFields };
+
+    // Repete o papel timbrado em toda pagina nova (inclusive as que o autoTable cria sozinho)
+    doc.internal.events.subscribe("addPage", () => drawPageBackground(doc, template));
+    drawPageBackground(doc, template);
+    y = template.drawHeader(doc, fields);
+  }
+
+  // Insere titulo apenas se explicitamente solicitado (sem marcacoes fixas do sistema)
   const addTitle = () => {
-    if (opts.title) {
+    if (opts.title && !useTemplate) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(0);
@@ -86,7 +112,7 @@ export const buildMessagePdf = (message, opts = {}) => {
     }
 
     if (!line.trim()) {
-      y += 6; // Simula espaçamento ABNT
+      y += 6; // Simula espacamento ABNT
       i++;
       continue;
     }
@@ -108,11 +134,11 @@ export const buildMessagePdf = (message, opts = {}) => {
   }
 
   // --- Injeção da Assinatura Discreta ---
-  ensureSpace(20); // Garante que há espaço para a assinatura na página atual
+  ensureSpace(20); // Garante que ha espaco para a assinatura na pagina atual
   y += 10;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(10);
-  doc.setTextColor(130); // Tom de cinza para não disputar atenção com o texto principal
+  doc.setTextColor(130); // Tom de cinza para nao disputar atencao com o texto principal
   doc.text("Thiago Fernando | Engenheiro da Computação • Licenciado em Matemática", PAGE_WIDTH - MARGIN_RIGHT, y, { align: "right" });
 
   // --- Numeração de Páginas (Padrão ABNT) ---
