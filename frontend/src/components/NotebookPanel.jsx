@@ -27,6 +27,14 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [novaTagInput, setNovaTagInput] = useState("");
+  const [fontSize, setFontSize] = useState(14);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const saveTimer = useRef(null);
   const lastSavedContent = useRef("");
@@ -224,10 +232,10 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
         style={{
           background: c.bg,
           color: c.text,
-          width: "95%",
+          width: isMobile ? "100%" : "95%",
           maxWidth: 900,
-          height: "85vh",
-          borderRadius: 12,
+          height: isMobile ? "100dvh" : "85vh",
+          borderRadius: isMobile ? 0 : 12,
           display: "flex",
           overflow: "hidden",
           border: `1px solid ${c.border}`,
@@ -237,9 +245,9 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
         {/* LISTA DE NOTAS */}
         <div
           style={{
-            width: 280,
+            width: isMobile ? "100%" : 280,
             borderRight: `1px solid ${c.border}`,
-            display: "flex",
+            display: isMobile && selecionada ? "none" : "flex",
             flexDirection: "column",
           }}
         >
@@ -369,7 +377,25 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
         </div>
 
         {/* EDITOR */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: isMobile && !selecionada ? "none" : "flex", flexDirection: "column" }}>
+          {isMobile && selecionada && (
+            <button
+              onClick={() => setSelecionada(null)}
+              style={{
+                padding: "10px 14px",
+                background: "none",
+                border: "none",
+                borderBottom: `1px solid ${c.border}`,
+                color: c.sub,
+                cursor: "pointer",
+                textAlign: "left",
+                fontSize: 15,
+                fontWeight: 600,
+              }}
+            >
+              ← Voltar às notas
+            </button>
+          )}
           {!selecionada ? (
             <div
               style={{
@@ -433,6 +459,16 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
                 >
                   🕒 Histórico
                 </button>
+                <button
+                  onClick={() => setFontSize(s => Math.min(s + 2, 26))}
+                  style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${c.border}`, background: c.card, color: c.text, cursor: "pointer", fontWeight: 700, fontSize: 15 }}
+                  title="Aumentar fonte"
+                >A+</button>
+                <button
+                  onClick={() => setFontSize(s => Math.max(s - 2, 10))}
+                  style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${c.border}`, background: c.card, color: c.text, cursor: "pointer", fontWeight: 700, fontSize: 12 }}
+                  title="Diminuir fonte"
+                >A-</button>
                 <button
                   onClick={() => excluirNota(selecionada)}
                   style={{
@@ -499,8 +535,9 @@ const NotebookPanel = ({ isDark, onClose, userId }) => {
                   background: c.input,
                   color: c.text,
                   resize: "none",
-                  fontSize: 14,
+                  fontSize: fontSize,
                   fontFamily: "inherit",
+                  lineHeight: 1.6,
                 }}
               />
             </>
