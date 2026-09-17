@@ -1,6 +1,5 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getTemplate } from "./pdfTemplates.js";
 
 // Padrão ABNT: Margens Superior e Esquerda 3cm (30mm), Inferior e Direita 2cm (20mm)
 const MARGIN_TOP = 30;
@@ -37,39 +36,14 @@ const stripInlineMarkdown = (text) =>
     .replace(/`(.+?)`/g, "$1")
     .replace(/^#+\s*/, "");
 
-// Desenha o papel timbrado do template escolhido (logo + barra + rodape) —
-// chamado na 1a pagina e em toda pagina nova. O layout de cada template
-// (imagem de fundo + cabecalho) vem do cadastro em pdfTemplates.js.
-const drawPageBackground = (doc, template) => {
-  doc.addImage(template.background, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
-};
-
 // Monta o documento PDF e retorna a instancia jsPDF (sem salvar/baixar)
-// opts.coverTemplate (opcional): { curso, turma, registroAcademico, professor, nome, fase, tituloTrabalho }
-// Quando presente, aplica o papel timbrado da Celso Lisboa em todas as paginas
-// e o cabecalho de identificacao na primeira, no lugar do titulo simples antigo.
 export const buildMessagePdf = (message, opts = {}) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const useTemplate = Boolean(opts.coverTemplate);
   let y = MARGIN_TOP;
 
-  if (useTemplate) {
-    // opts.coverTemplate pode incluir um templateId (qual template usar) alem
-    // dos campos variaveis (fase, tituloTrabalho, turma, professor, etc.);
-    // os campos fixos de cada template (curso, RA, nome) vem do cadastro.
-    const { templateId, ...variableFields } = opts.coverTemplate;
-    const template = getTemplate(templateId);
-    const fields = { ...template.defaultFields, ...variableFields };
-
-    // Repete o papel timbrado em toda pagina nova (inclusive as que o autoTable cria sozinho)
-    doc.internal.events.subscribe("addPage", () => drawPageBackground(doc, template));
-    drawPageBackground(doc, template);
-    y = template.drawHeader(doc, fields);
-  }
-
-  // Insere titulo apenas se explicitamente solicitado (sem marcacoes fixas do sistema)
+  // Insere titulo apenas se explicitamente solicitado
   const addTitle = () => {
-    if (opts.title && !useTemplate) {
+    if (opts.title) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(0);

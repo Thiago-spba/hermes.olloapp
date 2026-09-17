@@ -172,7 +172,6 @@ const App = () => {
   const [showKnowledge, setShowKnowledge] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
-  const [academicTemplateMode, setAcademicTemplateMode] = useState(false);
   const mainRef = useRef(null);
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
@@ -472,8 +471,6 @@ const App = () => {
           onToggleStudyMode={setStudyMode}
           docMode={docMode}
           onToggleDocMode={toggleDocMode}
-          academicTemplateMode={academicTemplateMode}
-          onToggleAcademicTemplateMode={setAcademicTemplateMode}
           humanize={humanize}
           onToggleHumanize={toggleHumanize}
         />
@@ -575,7 +572,7 @@ const App = () => {
           <>
             {messages.map((message) => (
               <div key={message.id}>
-                <ChatMessage message={message} isDark={isDark} docMode={docMode} academicTemplateMode={academicTemplateMode} conversation={messages} />
+                <ChatMessage message={message} isDark={isDark} docMode={docMode} />
               </div>
             ))}
             {isLoading && (
