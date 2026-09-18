@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, createContext, useContext } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
@@ -10,6 +10,8 @@ const handleExportPdf = async (message) => {
   const { exportMessageToPdf } = await import("../utils/exportPdf");
   exportMessageToPdf(message, { title: "HERMES" });
 };
+
+const TableContext = createContext(false);
 
 // Converte delimitadores LaTeX para o formato que o KaTeX entende
 const normalizarLatex = (texto) => {
@@ -36,15 +38,15 @@ const MD_STYLES = `
   .hermes-md ul, .hermes-md ol { padding-left: 20px; margin: 4px 0 8px 0; }
   .hermes-md li { margin-bottom: 4px; }
   .hermes-md strong { color: inherit; }
-  .hermes-md code { background: rgba(0,229,170,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  .hermes-md code { background: rgba(0,229,170,0.15); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; font-family: monospace; }
   .hermes-md pre { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
   .hermes-md pre code { background: none; padding: 0; }
   .hermes-md h1, .hermes-md h2, .hermes-md h3 { margin: 8px 0 4px 0; }
   .hermes-md blockquote { border-left: 3px solid #00e5aa; padding-left: 10px; margin: 6px 0; opacity: 0.8; }
   .hermes-md .table-wrap { overflow-x: auto; max-width: 100%; margin: 8px 0; -webkit-overflow-scrolling: touch; }
-  .hermes-md table { border-collapse: collapse; width: max-content; min-width: 100%; margin: 0; }
-  .hermes-md th, .hermes-md td { border: 1px solid rgba(0,229,170,0.2); padding: 6px 10px; font-size: 0.9em; white-space: nowrap; }
-  .hermes-md th { background: rgba(0,229,170,0.1); }
+  .hermes-md table { border-collapse: collapse; width: 100%; }
+  .hermes-md th, .hermes-md td { border: 1px solid rgba(0,150,100,0.45); padding: 8px 12px; font-size: 0.9em; white-space: normal; word-break: break-word; color: inherit; vertical-align: top; }
+  .hermes-md th { background: rgba(0,160,110,0.25); font-weight: 600; }
   .hermes-md .katex-display { overflow-x: auto; margin: 8px 0; }
   .hermes-md .katex { font-size: 1em; }
 `;
@@ -304,7 +306,8 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                     code({ node, inline, className, children, ...props }) {
                       const [copied, setCopied] = useState(false);
                       const text = String(children).replace(/\n$/, "");
-                      if (inline) return <code className={className} {...props}>{children}</code>;
+                      const isInTable = useContext(TableContext);
+                      if (inline || isInTable) return <code className={className} {...props}>{children}</code>;
                       return (
                         <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.15)"}` }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
@@ -317,7 +320,9 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                         </div>
                       );
                     },
-                      table({ children }) { return <div className="table-wrap">{children}</div>; }
+                      table({ children }) { return <div className="table-wrap"><table>{children}</table></div>; },
+                    td({ children, ...props }) { return <TableContext.Provider value={true}><td {...props}>{children}</td></TableContext.Provider>; },
+                    th({ children, ...props }) { return <TableContext.Provider value={true}><th {...props}>{children}</th></TableContext.Provider>; },
                     }}
                 >
                   {normalizarLatex(message.content || "")}
