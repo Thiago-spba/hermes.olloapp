@@ -6,27 +6,11 @@ import {
   getConversations,
   getConversation,
 } from '../services/firestoreService'
+import gerarTitulo from '../utils/titulo'
 
 const INACTIVITY_LIMIT = 60 * 60 * 1000
 
-const generateTitle = (messages) => {
-  // Modo Aula: a 1a linha da resposta vem como "TÍTULO: 7º B – Frações"
-  const aulaMsg = messages.find(
-    (m) => m.role === 'assistant' && typeof m.content === 'string' && /^\s*T[ÍI]TULO:/i.test(m.content)
-  )
-  if (aulaMsg) {
-    const t = aulaMsg.content.trim().split('\n')[0].replace(/^\s*T[ÍI]TULO:\s*/i, '').trim()
-    if (t) return t.length > 60 ? t.slice(0, 60) + '...' : t
-  }
-  const firstUserMsg = messages.find(m => m.role === 'user')
-  if (!firstUserMsg) return 'Nova conversa'
-  const content = firstUserMsg.content.trim()
-  const cleaned = content
-    .replace(/^(me explica|me explique|o que é|o que são|como funciona|como fazer|qual é|quais são|fale sobre|explica|explique|define|definição de|me fala sobre|me diz|quero saber)\s+/i, '')
-    .trim()
-  const titled = cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
-  return titled.length > 45 ? titled.slice(0, 45) + '...' : titled
-}
+const generateTitle = (messages) => gerarTitulo(messages)
 
 const useConversation = (userId) => {
   const [conversationId, setConversationId] = useState(null)
