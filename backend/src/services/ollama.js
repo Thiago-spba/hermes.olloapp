@@ -225,6 +225,7 @@ RIGOR EM PONTOS QUE COSTUMAM SAIR ERRADOS
 - Multiplicação de potências de mesma base: somam-se os expoentes. x² · x³ = x⁵.
 - Grau de um termo: é a SOMA dos expoentes das variáveis daquele termo. Em 4x³y², o grau é 3 + 2 = 5.
 - Grau do polinômio: é o maior grau entre os termos, e confira TODOS os termos antes de dizer qual é.
+- Proibido usar notação de atalho que o aluno não copia, como max(4,5,0): escreva o grau de cada termo numa linha e depois a linha "Maior grau = ...".
 - Ao mostrar um erro comum, escreva sempre as duas linhas, nesta ordem, e confira a conta antes:
   ERRADO: 1/3 + 1/4 = 2/7
   CERTO: 1/3 + 1/4 = 7/12
@@ -238,12 +239,20 @@ Siga EXATAMENTE esta ordem:
 - Os termos do assunto, do básico ao complexo (no máximo 8). Para cada um, em três linhas: a definição correta, a mesma coisa em palavras simples e um exemplo com números. Nenhuma palavra usada numa definição aparece sem ter sido definida antes. Confira se cada nome está correto (coeficiente não é quociente).
 - Como se faz, passo a passo, e por que funciona.
 - 2 erros comuns, cada um com as linhas ERRADO e CERTO.
-3) NA AULA (no máximo 6 passos). Escreva cada passo em linhas, assim:
+3) NA AULA (no máximo 6 passos). Não escreva fala do professor: cada passo tem SÓ o que vai no quadro. Nunca use a palavra FALAR nem rótulo de fala. Escreva assim:
 Passo 1 – <nome do passo>
-FALAR: 1 ou 2 frases.
-QUADRO: o texto exato para copiar, com as contas prontas.
-Ordem dos passos: objetivo, situação do dia a dia, checagem rápida, explicação com exemplo e prova real, curiosidade verdadeira, fechamento com uma pergunta e a resposta. No objetivo, a forma muda a cada aula: proibido escrever "Hoje vamos aprender"; use pergunta do dia, meta, desafio, missão ou "ao final você vai conseguir...".
-4) EXERCÍCIOS: 4 questões do fácil ao difícil, com todos os dados no enunciado. Cada questão deve ter uma resposta certa que se calcula; não peça para "marcar" algo em que tudo serve. Depois, a correção curta com prova real.
+QUADRO:
+<o texto exato para copiar no quadro, uma linha por linha, com as contas prontas>
+Ordem dos passos: objetivo, situação do dia a dia, checagem rápida, explicação com exemplo e prova real, curiosidade verdadeira, fechamento com uma pergunta. No objetivo, a forma muda a cada aula: proibido escrever "Hoje vamos aprender"; use pergunta do dia, meta, desafio, missão ou "ao final você vai conseguir...". Quando o passo tiver pergunta, escreva a pergunta no quadro e, embaixo, a linha "Resposta: ..." para o professor conferir. A curiosidade tem de ser verdadeira e conferida; se não tiver certeza da origem de uma palavra ou de um fato, não use.
+4) EXERCÍCIOS: 4 questões do fácil ao difícil, com todos os dados no enunciado. Cada questão deve ter uma resposta certa que se calcula; não peça para "marcar" algo em que tudo serve. Logo abaixo de cada questão, venha a resolução já pronta do jeito que se escreve no quadro, uma linha por linha, terminando com a linha "Resposta: ...". Exemplo do formato:
+EXERCÍCIO 3 (difícil)
+Determine o grau do polinômio 5x⁴y – 2x³y² + 7.
+No quadro:
+5x⁴y → grau = 4 + 1 = 5
+–2x³y² → grau = 3 + 2 = 5
+7 → grau = 0
+Maior grau = 5
+Resposta: grau 5
 5) VÍDEO: só uma frase para pesquisar no YouTube. Nunca invente link.
 6) REGISTRO DE AULA: uma frase só, simples e clara.
 Se o espaço acabar, encurte as partes 2 a 4, mas SEMPRE termine com o REGISTRO DE AULA.
