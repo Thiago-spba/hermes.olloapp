@@ -55,32 +55,45 @@ export const sendMessage = async (message, history = [], images = [], onToken = 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let fullResponse = ""
+  // Buffer entre pedacos: um pedaco do streaming pode chegar cortado no meio de
+  // uma linha "data: {...}". Antes, essa linha incompleta falhava no JSON.parse e
+  // era descartada em silencio, e o resto dela chegava no pedaco seguinte sem o
+  // prefixo "data: " e tambem era filtrado fora -- resultado: letras e palavras
+  // desapareciam do texto (e com elas pares de **, linhas e tabelas quebravam).
+  // Agora so processamos linhas completas e guardamos o resto para o proximo pedaco.
+  let buffer = ""
+
+  const handleLine = (line) => {
+    if (!line.startsWith("data: ")) return
+    let json
+    try {
+      json = JSON.parse(line.slice(6))
+    } catch {
+      return
+    }
+    if (json.error) throw new Error(json.error)
+    if (json.token) {
+      fullResponse += json.token
+      if (onToken) onToken(json.token, false, null)
+    }
+    if (json.done && json.modelKey && onToken) {
+      onToken("", true, json.modelKey)
+    }
+  }
 
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
-    const chunk = decoder.decode(value, { stream: true })
-    const lines = chunk.split("\n").filter(l => l.startsWith("data: "))
-    for (const line of lines) {
-      let json
-      try {
-        json = JSON.parse(line.replace("data: ", ""))
-      } catch {
-        continue
-      }
-      // json.error precisa propagar de verdade -- antes ficava preso no
-      // mesmo try/catch do JSON.parse e era engolido silenciosamente,
-      // fazendo o chat parecer "sem resposta" quando o servidor falhava
-      // no meio do streaming (timeout, erro do provedor, etc.)
-      if (json.error) throw new Error(json.error)
-      if (json.token) {
-        fullResponse += json.token
-        if (onToken) onToken(json.token, false, null)
-      }
-      if (json.done && json.modelKey && onToken) {
-        onToken("", true, json.modelKey)
-      }
-    }
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+    for (const line of lines) handleLine(line)
+  }
+  // ultimo pedaco: se o fluxo terminou sem o \n final, a linha ainda esta no buffer
+  buffer += decoder.decode()
+  if (buffer) {
+    for (const line of buffer.split("\n")) handleLine(line)
+    buffer = ""
   }
 
   return fullResponse
