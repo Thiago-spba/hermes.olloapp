@@ -20,7 +20,7 @@ const toHistoryString = (content) => {
   return String(content);
 };
 
-const useChat = (studyMode = false, humanize = false) => {
+const useChat = (studyMode = false, humanize = false, aulaMode = false) => {
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -130,7 +130,8 @@ const useChat = (studyMode = false, humanize = false) => {
         studyMode,
         useRAG,
         activeProject?.context || "",
-        humanize
+        humanize,
+        aulaMode
       );
 
       // Sempre salva strings no histórico — nunca arrays
@@ -161,7 +162,7 @@ const useChat = (studyMode = false, humanize = false) => {
     } finally {
       setIsLoading(false);
     }
-  }, [history, selectedModel, studyMode, humanize]);
+  }, [history, selectedModel, studyMode, humanize, aulaMode]);
 
   const clearChat = useCallback(() => {
     setMessages([WELCOME_MESSAGE]);

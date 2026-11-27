@@ -27,7 +27,7 @@ const authHeaders = async (json = false) => {
   return headers
 }
 
-export const sendMessage = async (message, history = [], images = [], onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false, useRAG = false, projectContext = "", humanize = false) => {
+export const sendMessage = async (message, history = [], images = [], onToken = null, audio = null, audioMime = null, modelKey = "auto", studyMode = false, useRAG = false, projectContext = "", humanize = false, aulaMode = false) => {
   const headers = await authHeaders(true)
   const response = await fetch(`${API_URL}/api/chat`, {
     method: "POST",
@@ -42,6 +42,7 @@ export const sendMessage = async (message, history = [], images = [], onToken = 
       studyMode: studyMode || false,
       useRAG: useRAG || false,
       humanize: humanize || false,
+      aulaMode: aulaMode || false,
       ...(projectContext && { projectContext }),
     }),
   })

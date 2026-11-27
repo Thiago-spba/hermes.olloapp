@@ -56,6 +56,11 @@ export const validateChat = [
     .optional()
     .isBoolean()
     .withMessage('Humanizar deve ser booleano.'),
+
+  body('aulaMode')
+    .optional()
+    .isBoolean()
+    .withMessage('Modo aula deve ser booleano.'),
   
   (req, res, next) => {
     const errors = validationResult(req);

@@ -10,7 +10,7 @@ const router = Router()
 
 router.post("/", auth, validateChat, async (req, res) => {
   try {
-    const { message, images, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext, humanize } = req.body
+    const { message, images, audio, audioMime, modelKey, history: frontendHistory, studyMode, useRAG, projectContext, humanize, aulaMode } = req.body
     const userId = req.user.id
     let finalMessage = message || ""
 
@@ -81,9 +81,9 @@ router.post("/", auth, validateChat, async (req, res) => {
     // ── FASE 1: acumula resposta bruta do modelo primário (sem enviar ao frontend) ──
     let fullResponse = ""
 
-    if (humanize) {
+    if (humanize && !aulaMode) {
       // FASE 1: acumula resposta bruta do modelo primario (sem enviar ao frontend)
-      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
+      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false, aulaMode || false)) {
         fullResponse += token
       }
 
@@ -98,7 +98,7 @@ router.post("/", auth, validateChat, async (req, res) => {
       fullResponse = normalizedResponse || fullResponse
     } else {
       // Humanizacao desligada (padrao): streaming direto da resposta do modelo primario
-      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false)) {
+      for await (const token of chatStream(finalMessage, sessionHistory, imageList, modelKey || "auto", memory, studyMode || false, aulaMode || false)) {
         fullResponse += token
         res.write(`data: ${JSON.stringify({ token })}
 
