@@ -330,18 +330,22 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                       const text = String(children).replace(/\n$/, "");
                       const isInTable = useContext(TableContext);
                       if (inline || isInTable) return <code className={className} {...props}>{children}</code>;
+                      const isTexto = /language-(texto|text|txt)\b/.test(className || "");
+                      const claro = docMode || (isTexto && !isDark);
                       return (
-                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.15)"}` }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
-                            <span style={{ fontSize: "11px", color: docMode ? "#555555" : "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>{/language-(texto|text|txt)\b/.test(className || "") ? "texto" : "codigo"}</span>
-                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : docMode ? "#ffffff" : "rgba(0,229,170,0.1)", border: `1px solid ${docMode ? "#bbb" : "rgba(0,229,170,0.25)"}`, borderRadius: "6px", color: copied ? "#071a14" : docMode ? "#333333" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
+                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : claro ? "rgba(0,150,100,0.35)" : "rgba(0,229,170,0.15)"}` }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : claro ? "rgba(0,150,100,0.12)" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
+                            <span style={{ fontSize: "11px", color: docMode ? "#555555" : claro ? "#0a6b4d" : "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>{isTexto ? "texto" : "codigo"}</span>
+                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : docMode ? "#ffffff" : claro ? "#ffffff" : "rgba(0,229,170,0.1)", border: `1px solid ${docMode ? "#bbb" : claro ? "rgba(0,150,100,0.45)" : "rgba(0,229,170,0.25)"}`, borderRadius: "6px", color: copied ? "#071a14" : docMode ? "#333333" : claro ? "#0a6b4d" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
                               {copied ? "Copiado" : "Copiar"}
                             </button>
                           </div>
-                          <pre style={{ margin: 0, padding: "14px", background: docMode ? "#f7f7f7" : "rgba(0,0,0,0.25)", color: docMode ? "#1a1a1a" : "inherit", overflowX: "auto" }}><code className={className} {...props}>{children}</code></pre>
+                          <pre style={{ margin: 0, padding: "14px", background: docMode ? "#f7f7f7" : claro ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.25)", color: docMode ? "#1a1a1a" : "inherit", overflowX: isTexto ? "hidden" : "auto", ...(isTexto ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } : {}) }}><code className={className} style={isTexto ? { fontFamily: "inherit", fontSize: "1em" } : undefined} {...props}>{children}</code></pre>
                         </div>
                       );
                     },
+                    // evita a caixa cinza dupla: o bloco de codigo ja tem a sua propria moldura
+                    pre({ children }) { return <>{children}</>; },
                       table({ children }) { return <div className="table-wrap"><table>{children}</table></div>; },
                     td({ children, ...props }) { return <TableContext.Provider value={true}><td {...props}>{children}</td></TableContext.Provider>; },
                     th({ children, ...props }) { return <TableContext.Provider value={true}><th {...props}>{children}</th></TableContext.Provider>; },
