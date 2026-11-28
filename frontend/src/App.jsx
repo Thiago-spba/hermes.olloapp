@@ -172,6 +172,7 @@ const App = () => {
   const [showKnowledge, setShowKnowledge] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
+  const [aulaMode, setAulaMode] = useState(false);
   const mainRef = useRef(null);
   const isUserScrolling = useRef(false);
   const scrollTimeout = useRef(null);
@@ -231,7 +232,7 @@ const App = () => {
     changeModel,
     activeProject,
     setActiveProject,
-  } = useChat(studyMode, humanize);
+  } = useChat(studyMode, humanize, aulaMode);
   const showWelcomeScreen =
     !isLoading && messages.filter((m) => m.role === "user").length === 0;
 
@@ -469,6 +470,8 @@ const App = () => {
           onNotebookClick={() => setShowNotebook(true)}
           studyMode={studyMode}
           onToggleStudyMode={setStudyMode}
+          aulaMode={aulaMode}
+          onToggleAulaMode={setAulaMode}
           docMode={docMode}
           onToggleDocMode={toggleDocMode}
           humanize={humanize}

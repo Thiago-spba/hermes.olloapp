@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import { paraTextoLimpo } from "../utils/textoLimpo";
 
 // jsPDF e uma biblioteca pesada -- carregada sob demanda so quando o
 // usuario clica em baixar, em vez de inflar o bundle inicial pra todo mundo
@@ -184,6 +185,27 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
   const isThinking = message.role === "thinking";
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [copiedMsg, setCopiedMsg] = useState(false);
+
+  // Copia a mensagem inteira em texto limpo (sem #, ** e $; matematica como no quadro)
+  const handleCopyMsg = async () => {
+    const text = paraTextoLimpo(message.content || "");
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback para navegadores sem permissao de clipboard
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch { /* ignora */ }
+      document.body.removeChild(ta);
+    }
+    setCopiedMsg(true);
+    setTimeout(() => setCopiedMsg(false), 2000);
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -308,18 +330,22 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                       const text = String(children).replace(/\n$/, "");
                       const isInTable = useContext(TableContext);
                       if (inline || isInTable) return <code className={className} {...props}>{children}</code>;
+                      const isTexto = /language-(texto|text|txt)\b/.test(className || "");
+                      const claro = docMode || !isDark;
                       return (
-                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.15)"}` }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
-                            <span style={{ fontSize: "11px", color: docMode ? "#555555" : "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>codigo</span>
-                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : docMode ? "#ffffff" : "rgba(0,229,170,0.1)", border: `1px solid ${docMode ? "#bbb" : "rgba(0,229,170,0.25)"}`, borderRadius: "6px", color: copied ? "#071a14" : docMode ? "#333333" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
+                        <div style={{ margin: "12px 0", borderRadius: "10px", overflow: "hidden", border: `1px solid ${docMode ? "#ccc" : claro ? "rgba(0,150,100,0.35)" : "rgba(0,229,170,0.15)"}` }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px", background: docMode ? "#eeeeee" : claro ? "rgba(0,150,100,0.12)" : "rgba(0,0,0,0.35)", borderBottom: `1px solid ${docMode ? "#ccc" : "rgba(0,229,170,0.1)"}` }}>
+                            <span style={{ fontSize: "11px", color: docMode ? "#555555" : claro ? "#0a6b4d" : "rgba(0,229,170,0.5)", fontFamily: "monospace", letterSpacing: "0.5px" }}>{isTexto ? "texto" : "codigo"}</span>
+                            <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }} style={{ display: "flex", alignItems: "center", gap: "5px", background: copied ? "#00e5aa" : docMode ? "#ffffff" : claro ? "#ffffff" : "rgba(0,229,170,0.1)", border: `1px solid ${docMode ? "#bbb" : claro ? "rgba(0,150,100,0.45)" : "rgba(0,229,170,0.25)"}`, borderRadius: "6px", color: copied ? "#071a14" : docMode ? "#333333" : claro ? "#0a6b4d" : "#00e5aa", fontSize: "12px", fontWeight: "600", padding: "4px 12px", cursor: "pointer", transition: "all 0.2s" }}>
                               {copied ? "Copiado" : "Copiar"}
                             </button>
                           </div>
-                          <pre style={{ margin: 0, padding: "14px", background: docMode ? "#f7f7f7" : "rgba(0,0,0,0.25)", color: docMode ? "#1a1a1a" : "inherit", overflowX: "auto" }}><code className={className} {...props}>{children}</code></pre>
+                          <pre style={{ margin: 0, padding: "14px", background: docMode ? "#f7f7f7" : claro ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.25)", color: docMode ? "#1a1a1a" : "inherit", overflowX: isTexto ? "hidden" : "auto", ...(isTexto ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontFamily: "inherit", fontSize: "15px", lineHeight: 1.5 } : {}) }}><code className={className} style={isTexto ? { fontFamily: "inherit", fontSize: "1em" } : undefined} {...props}>{children}</code></pre>
                         </div>
                       );
                     },
+                    // evita a caixa cinza dupla: o bloco de codigo ja tem a sua propria moldura
+                    pre({ children }) { return <>{children}</>; },
                       table({ children }) { return <div className="table-wrap"><table>{children}</table></div>; },
                     td({ children, ...props }) { return <TableContext.Provider value={true}><td {...props}>{children}</td></TableContext.Provider>; },
                     th({ children, ...props }) { return <TableContext.Provider value={true}><th {...props}>{children}</th></TableContext.Provider>; },
@@ -364,11 +390,27 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                   </span>
                 )}
               </div>
-              {!isUser && !isError && message.content && (
+              {!isError && message.content && (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "4px" }}
                 >
-                  {speaking && (
+                  <button
+                    onClick={handleCopyMsg}
+                    title="Copiar mensagem"
+                    style={{
+                      background: copiedMsg ? "#00e5aa" : "transparent",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      fontSize: "11px",
+                      fontWeight: copiedMsg ? "600" : undefined,
+                      padding: "0 4px",
+                      color: copiedMsg ? "#071a14" : isDark ? "#3d6b5e" : "#7aada0",
+                    }}
+                  >
+                    {copiedMsg ? "Copiado" : "📋"}
+                  </button>
+                  {!isUser && speaking && (
                     <button
                       onClick={handleStop}
                       title="Parar"
@@ -384,6 +426,7 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                       ⏹
                     </button>
                   )}
+                  {!isUser && (<>
                   <button
                     onClick={handleSpeak}
                     title={speaking ? (paused ? "Retomar" : "Pausar") : "Ouvir"}
@@ -426,6 +469,7 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
                   >
                     📄
                   </button>
+                  </>)}
                 </div>
               )}
             </div>

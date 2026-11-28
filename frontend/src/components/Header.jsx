@@ -12,6 +12,8 @@ const Header = ({
   onNotebookClick,
   studyMode, // ✅ ADICIONADO
   onToggleStudyMode, // ✅ ADICIONADO
+  aulaMode,
+  onToggleAulaMode,
   docMode,
   onToggleDocMode,
   humanize,
@@ -621,6 +623,60 @@ const Header = ({
                     }}
                   >
                     {studyMode ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                {/* Modo Aula — gera roteiro de aula (fala + quadro) */}
+                <button
+                  onClick={() => {
+                    onToggleAulaMode?.(!aulaMode);
+                    setMenuOpen(false);
+                  }}
+                  className="hermes-menu-item"
+                  title="Gera o roteiro de aula: parte para o professor e roteiro com fala e quadro"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: aulaMode
+                      ? isDark
+                        ? "#0d2e1f"
+                        : "#e0f5ef"
+                      : "transparent",
+                    border: "none",
+                    borderBottom: `1px solid ${c.border}`,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    fontSize: "13px",
+                    color: aulaMode
+                      ? isDark
+                        ? "#00e5aa"
+                        : "#007a55"
+                      : c.text,
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "18px" }}>🧮</span>
+                    <span>Modo Aula</span>
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: aulaMode
+                        ? isDark
+                          ? "#143d2e"
+                          : "#ccede5"
+                        : "transparent",
+                      color: aulaMode ? "#00e5aa" : c.sub,
+                      border: aulaMode ? "1px solid #00e5aa" : "none",
+                    }}
+                  >
+                    {aulaMode ? "ON" : "OFF"}
                   </span>
                 </button>
 

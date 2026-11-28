@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import gerarTitulo from "../utils/titulo";
 import {
   deleteConversation,
   finishConversation,
@@ -56,17 +57,8 @@ const ConversationList = ({
       conv.title !== "Conversa sem título"
     )
       return conv.title;
-    const first = conv.messages?.find((m) => m.role === "user");
-    if (!first?.content) return "Conversa sem título";
-    const cleaned = first.content
-      .trim()
-      .replace(
-        /^(me explica|me explique|o que é|o que são|como funciona|como fazer|qual é|quais são|fale sobre|explica|explique|define|definição de|me fala sobre|me diz|quero saber)\s+/i,
-        "",
-      )
-      .trim();
-    const titled = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-    return titled.length > 45 ? titled.slice(0, 45) + "..." : titled;
+    const t = gerarTitulo(conv.messages);
+    return t === "Nova conversa" ? "Conversa sem título" : t;
   };
 
   // ✅ Salva título editado
