@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import { paraTextoLimpo } from "../utils/textoLimpo";
 
 // jsPDF e uma biblioteca pesada -- carregada sob demanda so quando o
 // usuario clica em baixar, em vez de inflar o bundle inicial pra todo mundo
@@ -186,9 +187,9 @@ const ChatMessage = memo(({ message, isDark, docMode = false }) => {
   const [paused, setPaused] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
 
-  // Copia a mensagem inteira (texto puro, pronto para colar no WhatsApp etc.)
+  // Copia a mensagem inteira em texto limpo (sem #, ** e $; matematica como no quadro)
   const handleCopyMsg = async () => {
-    const text = message.content || "";
+    const text = paraTextoLimpo(message.content || "");
     try {
       await navigator.clipboard.writeText(text);
     } catch {
