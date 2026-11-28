@@ -271,10 +271,23 @@ Responda SOMENTE o que foi pedido, com as mesmas regras de escrita acima. Não r
 
 Regras finais: use a série e a turma como o professor escreveu, sem inventar a letra. Não cite código da BNCC. Não coloque tempo em minutos.`;
 
+const COPY_BLOCK_PROMPT = `
+
+BLOCOS PARA COPIAR:
+Quando sua resposta incluir um texto pronto para o Thiago copiar e usar em outro lugar (mensagem de WhatsApp, e-mail, registro de aula, texto para o quadro, comunicado), coloque SOMENTE esse texto pronto dentro de um bloco de codigo com a linguagem "texto", assim:
+\`\`\`texto
+(texto pronto aqui)
+\`\`\`
+- Explicacoes, comentarios e perguntas ficam FORA do bloco.
+- Se houver mais de um texto pronto, use um bloco para cada.
+- Dentro do bloco escreva em texto comum, sem LaTeX e sem formatacao Markdown, porque o bloco mostra o texto exatamente como esta.
+- NAO use bloco em respostas comuns, explicacoes ou conversas: so para texto pronto para copiar. Codigo de programacao continua no bloco com a linguagem correta.`;
+
 const buildSystemPrompt = (memory = null, studyMode = false, aulaMode = false) => {
   if (aulaMode) return AULA_MODE_PROMPT;
   let prompt = BASE_PROMPT;
   if (studyMode) prompt += STUDY_MODE_PROMPT;
+  prompt += COPY_BLOCK_PROMPT;
   if (memory) prompt += `\n\nO QUE VOCE SABE SOBRE O THIAGO:\n${memory}\n\nIMPORTANTE: use essas informacoes para ajustar SILENCIOSAMENTE seu jeito de explicar (ex: evitar contas mentais complexas, ir direto ao ponto, usar exemplos praticos). NUNCA mencione, cite ou comente essas informacoes na resposta (nao diga "sei que voce tem dificuldade com X" ou similar), a menos que o Thiago pergunte diretamente sobre isso. Aja naturalmente, sem expor que sabe.`;
   return prompt;
 };
